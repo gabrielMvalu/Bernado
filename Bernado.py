@@ -157,12 +157,12 @@ def plot_top_right():
 
     fig = px.bar(
         sales_data,
-        x="Depozit",
-        y="vanzari",
+        x="business_unit",
+        y="sales",
         color="Scenario",
         barmode="group",
         text_auto=".2s",
-        title="Vanzarile per 2023",
+        title="Sales for Year 2023",
         height=400,
     )
     fig.update_traces(
@@ -193,12 +193,12 @@ def plot_bottom_left():
 
     fig = px.line(
         sales_data,
-        x="luna",
-        y="vanzari",
+        x="month",
+        y="sales",
         color="Scenario",
         markers=True,
         text="sales",
-        title="Vanzari lunare vs Predictii 2023",
+        title="Monthly Budget vs Forecast 2023",
     )
     fig.update_traces(textposition="top center")
     st.plotly_chart(fig, use_container_width=True)
@@ -239,7 +239,7 @@ def plot_bottom_right():
         x="Year",
         y="sales",
         color="Account",
-        title="Vanzari anuale",
+        title="Actual Yearly Sales Per Account",
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -256,33 +256,33 @@ with top_left_column:
 
     with column_1:
         plot_metric(
-            "Incasari",
+            "Total Accounts Receivable",
             6621280,
-            prefix="RON",
+            prefix="$",
             suffix="",
             show_graph=True,
             color_graph="rgba(0, 104, 201, 0.2)",
         )
-        plot_gauge(1.86, "#0068C9", "%", "Rata curenta", 3)
+        plot_gauge(1.86, "#0068C9", "%", "Current Ratio", 3)
 
     with column_2:
         plot_metric(
-            "Plati",
+            "Total Accounts Payable",
             1630270,
-            prefix="RON",
+            prefix="$",
             suffix="",
             show_graph=True,
             color_graph="rgba(255, 43, 43, 0.2)",
         )
-        plot_gauge(10, "#FF8700", " zile", " Stocuri", 31)
+        plot_gauge(10, "#FF8700", " days", "In Stock", 31)
 
     with column_3:
-        plot_metric("Capitaluri", 75.38, prefix="", suffix=" %", show_graph=False)
-        plot_gauge(7, "#FF2B2B", " zile", "Fara stoc", 31)
+        plot_metric("Equity Ratio", 75.38, prefix="", suffix=" %", show_graph=False)
+        plot_gauge(7, "#FF2B2B", " days", "Out Stock", 31)
         
     with column_4:
-        plot_metric("Datorii", 1.10, prefix="", suffix=" %", show_graph=False)
-        plot_gauge(28, "#29B09D", " zile", "Intarzieri", 31)
+        plot_metric("Debt Equity", 1.10, prefix="", suffix=" %", show_graph=False)
+        plot_gauge(28, "#29B09D", " days", "Delay", 31)
 
 with top_right_column:
     plot_top_right()
