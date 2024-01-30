@@ -276,7 +276,7 @@ with top_left_column:
         plot_gauge(10, "#FF8700", " days", "In Stock", 31)
 
     with column_3:
-        plot_metric("Equity Ratio", 75.38, prefix="", suffix=" %", show_graph=False)
+        plot_metric("Capitaluri", 75.38, prefix="", suffix=" %", show_graph=False)
         plot_gauge(7, "#FF2B2B", " days", "Out Stock", 31)
         
     with column_4:
