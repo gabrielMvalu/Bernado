@@ -9,17 +9,17 @@ import streamlit as st
 # PAGE SETUP
 #######################################
 
-st.set_page_config(page_title="Sales Dashboard", page_icon=":bar_chart:", layout="wide")
+st.set_page_config(page_title="Vanzari Dashboard", page_icon=":bar_chart:", layout="wide")
 
 st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
 st.markdown("Prototip aplicatie")
 
 with st.sidebar:
-    st.header("Configuration")
+    st.header("Configurare")
     uploaded_file = st.file_uploader("Choose a file")
 
 if uploaded_file is None:
-    st.info(" Upload a file through config", icon="ℹ️")
+    st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
     st.stop()
 
 #######################################
