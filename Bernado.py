@@ -1,7 +1,4 @@
-"""
-In an environment with streamlit, plotly and duckdb installed,
-Run with `streamlit run streamlit_app.py`
-"""
+
 import random
 import duckdb
 import pandas as pd
@@ -13,17 +10,17 @@ import streamlit as st
 # PAGE SETUP
 #######################################
 
-st.set_page_config(page_title="Sales Dashboard", page_icon=":bar_chart:", layout="wide")
+st.set_page_config(page_title="Vanzari", page_icon=":bar_chart:", layout="wide")
 
-st.title("Sales Streamlit Dashboard")
-st.markdown("_Prototype v0.4.1_")
+st.header(':violet[Predictie AI-statistic]', divider='rainbow')
+st.markdown("Aplicatie prototip vanzari Brenado SRL")
 
 with st.sidebar:
-    st.header("Configuration")
-    uploaded_file = st.file_uploader("Choose a file")
+    st.header("Configurare")
+    uploaded_file = st.file_uploader("Alege un fisier")
 
 if uploaded_file is None:
-    st.info(" Upload a file through config", icon="ℹ️")
+    st.info(" Incarca fisierul vanzari *.xlsx", icon="ℹ️")
     st.stop()
 
 #######################################
@@ -65,7 +62,7 @@ def plot_metric(label, value, prefix="", suffix="", show_graph=False, color_grap
             },
             title={
                 "text": label,
-                "font": {"size": 24},
+                "font": {"size": 20},
             },
         )
     )
@@ -89,7 +86,7 @@ def plot_metric(label, value, prefix="", suffix="", show_graph=False, color_grap
         # paper_bgcolor="lightgrey",
         margin=dict(t=30, b=0),
         showlegend=False,
-        plot_bgcolor="white",
+        plot_bgcolor="red",
         height=100,
     )
 
