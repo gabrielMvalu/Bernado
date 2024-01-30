@@ -3,5 +3,5 @@ pandas
 openpyxl
 python-docx
 docx
-plotly
+plotly==5.5.0
 duckdb
