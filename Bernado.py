@@ -85,7 +85,7 @@ def plot_metric(label, value, prefix="", suffix="", show_graph=False, color_grap
         # paper_bgcolor="lightgrey",
         margin=dict(t=30, b=0),
         showlegend=False,
-        plot_bgcolor="white",
+        plot_bgcolor="black",
         height=100,
     )
 
@@ -197,7 +197,7 @@ def plot_bottom_left():
         color="Scenario",
         markers=True,
         text="sales",
-        title="Vanzari lunare comparativ cu predictiile lunare 2023",
+        title="Vanzari lunare comparativ cu predictii lunare 2023",
     )
     fig.update_traces(textposition="top center")
     st.plotly_chart(fig, use_container_width=True)
@@ -238,7 +238,7 @@ def plot_bottom_right():
         x="Year",
         y="sales",
         color="Account",
-        title="Actual Yearly Sales Per Account",
+        title="Vanarile anuale / cont",
     )
     st.plotly_chart(fig, use_container_width=True)
 
