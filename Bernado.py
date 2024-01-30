@@ -123,9 +123,9 @@ def plot_gauge(
 
 
 def plot_top_right():
-    sales_data = duckdb.sql(
+    vanzari_data = duckdb.sql(
         f"""
-        WITH sales_data AS (
+        WITH vanzari_data AS (
             UNPIVOT ( 
                 SELECT 
                     Scenario,
@@ -133,31 +133,31 @@ def plot_top_right():
                     {','.join(all_months)} 
                     FROM df 
                     WHERE Year='2023' 
-                    AND Account='Sales' 
+                    AND Account='Vanzari' 
                 ) 
             ON {','.join(all_months)}
             INTO
                 NAME month
-                VALUE sales
+                VALUE vanzari
         ),
 
-        aggregated_sales AS (
+        aggregated_vanzari AS (
             SELECT
                 Scenario,
                 depozit_Galicea,
-                SUM(sales) AS sales
-            FROM sales_data
+                SUM(vanzari) AS vanzari
+            FROM vanzari_data
             GROUP BY Scenario, depozit_Galicea
         )
         
-        SELECT * FROM aggregated_sales
+        SELECT * FROM aggregated_vanzari
         """
     ).df()
 
     fig = px.bar(
-        sales_data,
+        vanzari_data,
         x="depozit_Galicea",
-        y="sales",
+        y="vanzari",
         color="Scenario",
         barmode="group",
         text_auto=".2s",
@@ -171,32 +171,32 @@ def plot_top_right():
 
 
 def plot_bottom_left():
-    sales_data = duckdb.sql(
+    vanzari_data = duckdb.sql(
         f"""
-        WITH sales_data AS (
+        WITH vanzari_data AS (
             SELECT 
             Scenario,{','.join(all_months)} 
             FROM df 
             WHERE Year='2023' 
-            AND Account='Sales'
+            AND Account='Vanzari'
             AND depozit_Galicea='Software'
         )
 
-        UNPIVOT sales_data 
+        UNPIVOT vanzari_data 
         ON {','.join(all_months)}
         INTO
             NAME month
-            VALUE sales
+            VALUE vanzari
     """
     ).df()
 
     fig = px.line(
-        sales_data,
+        vanzari_data,
         x="month",
-        y="sales",
+        y="vanzari",
         color="Scenario",
         markers=True,
-        text="sales",
+        text="vanzari",
         title="Vanzari lunare comparativ cu predictii lunare 2023",
     )
     fig.update_traces(textposition="top center")
@@ -204,39 +204,39 @@ def plot_bottom_left():
 
 
 def plot_bottom_right():
-    sales_data = duckdb.sql(
+    vanzari_data = duckdb.sql(
         f"""
-        WITH sales_data AS (
+        WITH vanzari_data AS (
             UNPIVOT ( 
                 SELECT 
                     Account,Year,{','.join([f'ABS({month}) AS {month}' for month in all_months])}
                     FROM df 
                     WHERE Scenario='Actuals'
-                    AND Account!='Sales'
+                    AND Account!='Vanzari'
                 ) 
             ON {','.join(all_months)}
             INTO
                 NAME year
-                VALUE sales
+                VALUE vanzari
         ),
 
-        aggregated_sales AS (
+        aggregated_vanzari AS (
             SELECT
                 Account,
                 Year,
-                SUM(sales) AS sales
-            FROM sales_data
+                SUM(vanzari) AS vanzari
+            FROM vanzari_data
             GROUP BY Account, Year
         )
         
-        SELECT * FROM aggregated_sales
+        SELECT * FROM aggregated_vanzari
     """
     ).df()
 
     fig = px.bar(
-        sales_data,
+        vanzari_data,
         x="Year",
-        y="sales",
+        y="vanzari",
         color="Account",
         title="Vanzarile anuale / cont",
     )
