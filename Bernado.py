@@ -156,12 +156,12 @@ def plot_top_right():
 
     fig = px.bar(
         sales_data,
-        x="business_unit",
-        y="sales",
+        x="Depozit Galicea",
+        y="Vanzari",
         color="Scenario",
         barmode="group",
         text_auto=".2s",
-        title="Sales for Year 2023",
+        title="Vanzari pentru anul 2023",
         height=400,
     )
     fig.update_traces(
