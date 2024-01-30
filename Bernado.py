@@ -1,4 +1,3 @@
-
 import random
 import duckdb
 import pandas as pd
@@ -10,17 +9,17 @@ import streamlit as st
 # PAGE SETUP
 #######################################
 
-st.set_page_config(page_title="Vanzari", page_icon=":bar_chart:", layout="wide")
+st.set_page_config(page_title="Sales Dashboard", page_icon=":bar_chart:", layout="wide")
 
-st.header(':violet[Predictie AI-statistic]', divider='rainbow')
-st.markdown("Aplicatie prototip vanzari Brenado SRL")
+st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
+st.markdown("Prototip aplicatie")
 
 with st.sidebar:
-    st.header("Configurare")
-    uploaded_file = st.file_uploader("Alege un fisier")
+    st.header("Configuration")
+    uploaded_file = st.file_uploader("Choose a file")
 
 if uploaded_file is None:
-    st.info(" Incarca fisierul vanzari *.xlsx", icon="ℹ️")
+    st.info(" Upload a file through config", icon="ℹ️")
     st.stop()
 
 #######################################
@@ -35,12 +34,12 @@ def load_data(path: str):
 
 
 df = load_data(uploaded_file)
-all_months = ["Ian","Feb","Mar","Apr","Mai","Iun","Iul","Aug","Sep","Oct","Nov","Dec"]
+all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
 with st.expander("Data Preview"):
     st.dataframe(
         df,
-        column_config={"An": st.column_config.NumberColumn(format="%d")},
+        column_config={"Year": st.column_config.NumberColumn(format="%d")},
     )
 
 #######################################
@@ -62,7 +61,7 @@ def plot_metric(label, value, prefix="", suffix="", show_graph=False, color_grap
             },
             title={
                 "text": label,
-                "font": {"size": 20},
+                "font": {"size": 24},
             },
         )
     )
