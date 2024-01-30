@@ -129,7 +129,7 @@ def plot_top_right():
             UNPIVOT ( 
                 SELECT 
                     Scenario,
-                    depozit_Galicea,
+                    business_unit,
                     {','.join(all_months)} 
                     FROM df 
                     WHERE Year='2023' 
@@ -144,10 +144,10 @@ def plot_top_right():
         aggregated_sales AS (
             SELECT
                 Scenario,
-                depozit_Galicea,
+                business_unit,
                 SUM(sales) AS sales
             FROM sales_data
-            GROUP BY Scenario, depozit_Galicea
+            GROUP BY Scenario, business_unit
         )
         
         SELECT * FROM aggregated_sales
@@ -156,7 +156,7 @@ def plot_top_right():
 
     fig = px.bar(
         sales_data,
-        x="depozit_Galicea",
+        x="business_unit",
         y="sales",
         color="Scenario",
         barmode="group",
@@ -179,7 +179,7 @@ def plot_bottom_left():
             FROM df 
             WHERE Year='2023' 
             AND Account='Sales'
-            AND depozit_Galicea='Software'
+            AND business_unit='Software'
         )
 
         UNPIVOT sales_data 
@@ -291,4 +291,5 @@ with bottom_left_column:
 
 with bottom_right_column:
     plot_bottom_right()
+
 
