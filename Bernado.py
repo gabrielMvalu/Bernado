@@ -238,7 +238,7 @@ def plot_bottom_right():
         x="Year",
         y="sales",
         color="Account",
-        title="Vanarile anuale / cont",
+        title="Vanzarile anuale / cont",
     )
     st.plotly_chart(fig, use_container_width=True)
 
