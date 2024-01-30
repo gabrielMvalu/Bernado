@@ -291,5 +291,3 @@ with bottom_left_column:
 
 with bottom_right_column:
     plot_bottom_right()
-
-
