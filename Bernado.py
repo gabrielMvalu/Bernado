@@ -273,15 +273,15 @@ with top_left_column:
             show_graph=True,
             color_graph="rgba(255, 43, 43, 0.2)",
         )
-        plot_gauge(10, "#FF8700", " days", "In Stock", 31)
+        plot_gauge(10, "#FF8700", " zile", "In stoc", 31)
 
     with column_3:
-        plot_metric("Capitaluri", 75.38, prefix="", suffix=" %", show_graph=False)
-        plot_gauge(7, "#FF2B2B", " days", "Out Stock", 31)
+        plot_metric("Equity Ratio", 75.38, prefix="", suffix=" %", show_graph=False)
+        plot_gauge(7, "#FF2B2B", " zile", "Fara stocuri", 31)
         
     with column_4:
         plot_metric("Debt Equity", 1.10, prefix="", suffix=" %", show_graph=False)
-        plot_gauge(28, "#29B09D", " days", "Delay", 31)
+        plot_gauge(28, "#29B09D", " zile", "Intarzieri", 31)
 
 with top_right_column:
     plot_top_right()
