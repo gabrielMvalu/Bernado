@@ -156,8 +156,8 @@ def plot_top_right():
 
     fig = px.bar(
         sales_data,
-        x="Depozit Galicea",
-        y="Vanzari",
+        x="business_unit",
+        y="sales",
         color="Scenario",
         barmode="group",
         text_auto=".2s",
