@@ -1,65 +1,297 @@
-#Main Page
+"""
+In an environment with streamlit, plotly and duckdb installed,
+Run with `streamlit run streamlit_app.py`
+"""
+import random
+import duckdb
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import streamlit as st
-from streamlit import config as _config
 
-# Asigurați-vă că titlul paginii este setat conform preferințelor dvs.
-st.set_page_config(page_title='Statistici curente', page_icon=None, layout='centered', initial_sidebar_state='auto')
+#######################################
+# PAGE SETUP
+#######################################
 
-# Puteți adăuga un logo și un titlu în bara laterală dacă doriți
-# st.sidebar.image('./assets/Brenado.PNG', use_column_width=True)
-st.sidebar.title('Navigare')
+st.set_page_config(page_title="Sales Dashboard", page_icon=":bar_chart:", layout="wide")
 
-col1, col2, col3 = st.columns(3)
-col1.metric("Temperatura", "2 °C", "1.2 °C")
-col2.metric("Vant", "3 Kmph", "-8%")
-col3.metric("Umiditate", "86%", "4%")
+st.title("Sales Streamlit Dashboard")
+st.markdown("_Prototype v0.4.1_")
 
-st.markdown("""
-       <style>
-       @import url('https://fonts.googleapis.com/css2?family=Patrick+Hand&display=swap');
-       .title {
-           color: #7FBBE9; /* A modern shade of blue */
-           font-family: 'Comic Sans MS', cursive, sans-serif; /* Comic Sans MS with fallbacks */
-           font-size: 30px; /* Adjust the size as needed */
-           font-weight: 700; /* 700 is for bold text */
-           text-align: center; /* Center align for modern aesthetics */
-           margin-bottom: 20px; /* Add some space below the title */
-       }
-       </style>
-  
-       <h1 class='title'>Vanzarile actualizate si statistici viitoare</h1>
-       """, unsafe_allow_html=True)
+with st.sidebar:
+    st.header("Configuration")
+    uploaded_file = st.file_uploader("Choose a file")
 
-st.divider()  # 👈 Draws a horizontal rule
+if uploaded_file is None:
+    st.info(" Upload a file through config", icon="ℹ️")
+    st.stop()
 
-# sectiune lucrari efectuate
-
-tab1, tab2, tab3 = st.tabs(["Vanzari", "Stocuri", "Predictii"])
-with tab1:
-   st.header("Vanzari luna in curs")
- 
-with tab2:
-   st.header("Stocuri existente")
-
-with tab3:
-   st.header("Predictii evolutie piata")
+#######################################
+# DATA LOADING
+#######################################
 
 
-container = st.container(border=True)
-container.write(" ")
+@st.cache_data
+def load_data(path: str):
+    df = pd.read_excel(path)
+    return df
 
-#Sectiune adaugare 
-prompt = st.chat_input("Adauga mesaj/sau valori/comunicari interne")
-if prompt:
-    st.write(f"User has sent the following prompt: {prompt}")
 
-st.divider()  # 👈 Draws a horizontal rule
+df = load_data(uploaded_file)
+all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-st.write("Vanzarile actuale")
+with st.expander("Data Preview"):
+    st.dataframe(
+        df,
+        column_config={"Year": st.column_config.NumberColumn(format="%d")},
+    )
 
-st.divider()  # 👈 Another horizontal rule
-#Sectiune meniuri comandate
-st.bar_chart({"vanzari": [1, 5, 2, 6, 2, 1]})
-with st.expander(f"{prompt}"):
-    st.write("Vanzarile per produs specific")
-    st.image("https://tomkelcy.com/pic.png")
+#######################################
+# VISUALIZATION METHODS
+#######################################
+
+
+def plot_metric(label, value, prefix="", suffix="", show_graph=False, color_graph=""):
+    fig = go.Figure()
+
+    fig.add_trace(
+        go.Indicator(
+            value=value,
+            gauge={"axis": {"visible": False}},
+            number={
+                "prefix": prefix,
+                "suffix": suffix,
+                "font.size": 28,
+            },
+            title={
+                "text": label,
+                "font": {"size": 24},
+            },
+        )
+    )
+
+    if show_graph:
+        fig.add_trace(
+            go.Scatter(
+                y=random.sample(range(0, 101), 30),
+                hoverinfo="skip",
+                fill="tozeroy",
+                fillcolor=color_graph,
+                line={
+                    "color": color_graph,
+                },
+            )
+        )
+
+    fig.update_xaxes(visible=False, fixedrange=True)
+    fig.update_yaxes(visible=False, fixedrange=True)
+    fig.update_layout(
+        # paper_bgcolor="lightgrey",
+        margin=dict(t=30, b=0),
+        showlegend=False,
+        plot_bgcolor="white",
+        height=100,
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_gauge(
+    indicator_number, indicator_color, indicator_suffix, indicator_title, max_bound
+):
+    fig = go.Figure(
+        go.Indicator(
+            value=indicator_number,
+            mode="gauge+number",
+            domain={"x": [0, 1], "y": [0, 1]},
+            number={
+                "suffix": indicator_suffix,
+                "font.size": 26,
+            },
+            gauge={
+                "axis": {"range": [0, max_bound], "tickwidth": 1},
+                "bar": {"color": indicator_color},
+            },
+            title={
+                "text": indicator_title,
+                "font": {"size": 28},
+            },
+        )
+    )
+    fig.update_layout(
+        # paper_bgcolor="lightgrey",
+        height=200,
+        margin=dict(l=10, r=10, t=50, b=10, pad=8),
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_top_right():
+    sales_data = duckdb.sql(
+        f"""
+        WITH sales_data AS (
+            UNPIVOT ( 
+                SELECT 
+                    Scenario,
+                    business_unit,
+                    {','.join(all_months)} 
+                    FROM df 
+                    WHERE Year='2023' 
+                    AND Account='Sales' 
+                ) 
+            ON {','.join(all_months)}
+            INTO
+                NAME month
+                VALUE sales
+        ),
+
+        aggregated_sales AS (
+            SELECT
+                Scenario,
+                business_unit,
+                SUM(sales) AS sales
+            FROM sales_data
+            GROUP BY Scenario, business_unit
+        )
+        
+        SELECT * FROM aggregated_sales
+        """
+    ).df()
+
+    fig = px.bar(
+        sales_data,
+        x="business_unit",
+        y="sales",
+        color="Scenario",
+        barmode="group",
+        text_auto=".2s",
+        title="Sales for Year 2023",
+        height=400,
+    )
+    fig.update_traces(
+        textfont_size=12, textangle=0, textposition="outside", cliponaxis=False
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_bottom_left():
+    sales_data = duckdb.sql(
+        f"""
+        WITH sales_data AS (
+            SELECT 
+            Scenario,{','.join(all_months)} 
+            FROM df 
+            WHERE Year='2023' 
+            AND Account='Sales'
+            AND business_unit='Software'
+        )
+
+        UNPIVOT sales_data 
+        ON {','.join(all_months)}
+        INTO
+            NAME month
+            VALUE sales
+    """
+    ).df()
+
+    fig = px.line(
+        sales_data,
+        x="month",
+        y="sales",
+        color="Scenario",
+        markers=True,
+        text="sales",
+        title="Monthly Budget vs Forecast 2023",
+    )
+    fig.update_traces(textposition="top center")
+    st.plotly_chart(fig, use_container_width=True)
+
+
+def plot_bottom_right():
+    sales_data = duckdb.sql(
+        f"""
+        WITH sales_data AS (
+            UNPIVOT ( 
+                SELECT 
+                    Account,Year,{','.join([f'ABS({month}) AS {month}' for month in all_months])}
+                    FROM df 
+                    WHERE Scenario='Actuals'
+                    AND Account!='Sales'
+                ) 
+            ON {','.join(all_months)}
+            INTO
+                NAME year
+                VALUE sales
+        ),
+
+        aggregated_sales AS (
+            SELECT
+                Account,
+                Year,
+                SUM(sales) AS sales
+            FROM sales_data
+            GROUP BY Account, Year
+        )
+        
+        SELECT * FROM aggregated_sales
+    """
+    ).df()
+
+    fig = px.bar(
+        sales_data,
+        x="Year",
+        y="sales",
+        color="Account",
+        title="Actual Yearly Sales Per Account",
+    )
+    st.plotly_chart(fig, use_container_width=True)
+
+
+#######################################
+# STREAMLIT LAYOUT
+#######################################
+
+top_left_column, top_right_column = st.columns((2, 1))
+bottom_left_column, bottom_right_column = st.columns(2)
+
+with top_left_column:
+    column_1, column_2, column_3, column_4 = st.columns(4)
+
+    with column_1:
+        plot_metric(
+            "Total Accounts Receivable",
+            6621280,
+            prefix="$",
+            suffix="",
+            show_graph=True,
+            color_graph="rgba(0, 104, 201, 0.2)",
+        )
+        plot_gauge(1.86, "#0068C9", "%", "Current Ratio", 3)
+
+    with column_2:
+        plot_metric(
+            "Total Accounts Payable",
+            1630270,
+            prefix="$",
+            suffix="",
+            show_graph=True,
+            color_graph="rgba(255, 43, 43, 0.2)",
+        )
+        plot_gauge(10, "#FF8700", " days", "In Stock", 31)
+
+    with column_3:
+        plot_metric("Equity Ratio", 75.38, prefix="", suffix=" %", show_graph=False)
+        plot_gauge(7, "#FF2B2B", " days", "Out Stock", 31)
+        
+    with column_4:
+        plot_metric("Debt Equity", 1.10, prefix="", suffix=" %", show_graph=False)
+        plot_gauge(28, "#29B09D", " days", "Delay", 31)
+
+with top_right_column:
+    plot_top_right()
+
+with bottom_left_column:
+    plot_bottom_left()
+
+with bottom_right_column:
+    plot_bottom_right()
