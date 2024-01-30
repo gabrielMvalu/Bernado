@@ -197,7 +197,7 @@ def plot_bottom_left():
         color="Scenario",
         markers=True,
         text="sales",
-        title="Monthly Budget vs Forecast 2023",
+        title="Vanzari lunare comparativ cu predictiile lunare 2023",
     )
     fig.update_traces(textposition="top center")
     st.plotly_chart(fig, use_container_width=True)
