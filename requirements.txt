@@ -3,5 +3,4 @@ pandas
 openpyxl
 python-docx
 docx
-random
 duckdb
