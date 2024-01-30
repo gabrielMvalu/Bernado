@@ -3,3 +3,7 @@ pandas
 openpyxl
 python-docx
 docx
+random
+duckdb
+plotly.express
+plotly.graph_objects
