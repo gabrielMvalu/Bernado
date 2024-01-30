@@ -262,7 +262,7 @@ with top_left_column:
             show_graph=True,
             color_graph="rgba(0, 104, 201, 0.2)",
         )
-        plot_gauge(1.86, "#0068C9", "%", "Current Ratio", 3)
+        plot_gauge(1.86, "#0068C9", "%", "Rata curenta", 3)
 
     with column_2:
         plot_metric(
