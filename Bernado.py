@@ -12,29 +12,47 @@ import streamlit as st
 
 st.set_page_config(page_title="Vanzari Dashboard", page_icon=":bar_chart:", layout="wide")
 st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
+
 st.markdown("Prototip aplicatie")
+
 with st.sidebar:
     st.header("Configurare")
-    uploaded_file = st.file_uploader("Choose a file")
-if uploaded_file is None:
-    st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
-    st.stop()
+    
+    # Select Box pentru alegerea sursa de date
+    data_source = st.selectbox("Alegeți sursa de date:", ["Upload File", "Predefined Data"])
+
+    # Încărcător de fișiere devine activ numai când se alege "Upload File"
+    uploaded_file = None
+    if data_source == "Upload File":
+        uploaded_file = st.file_uploader("Choose a file")
+    
+    # Afișează mesaj de informare dacă nu este selectată nici o sursă de date
+    if data_source == "Predefined Data" and not uploaded_file:
+        st.info("Se vor încărca datele predefinite din './assets/Data1.xlsx'.")
 
 
 #######################################
 # DATA LOADING
 #######################################
-@st.cache_data
-def load_data(path: str):
-    df = pd.read_excel(path)
+
+
+@st.cache
+def load_data(path_or_buffer):
+    if isinstance(path_or_buffer, str):
+        # Încărcarea datelor dintr-o cale de fișier
+        df = pd.read_excel(path_or_buffer)
+    else:
+        # Încărcarea datelor dintr-un buffer de fișier încărcat
+        df = pd.read_excel(path_or_buffer)
     return df
-df = load_data(uploaded_file)
-all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-with st.expander("Data Preview"):
-    st.dataframe(
-        df,
-        column_config={"Year": st.column_config.NumberColumn(format="%d")},
-    )
+
+# Determină sursa datelor și încarcă datele
+if uploaded_file is not None:
+    df = load_data(uploaded_file)
+elif data_source == "Predefined Data":
+    df = load_data('./assets/Data1.xlsx')
+else:
+    st.stop()
 
 #######################################
 # VISUALIZATION METHODS
