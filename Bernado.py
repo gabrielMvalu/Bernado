@@ -18,6 +18,11 @@ with st.sidebar:
     st.header("Configurare")
     uploaded_file = st.file_uploader("Choose a file")
 
+
+# Crearea select box-urilor pentru selectarea fișierelor
+selected_file_1 = st.selectbox("Alegeți primul fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
+selected_file_2 = st.selectbox("Alegeți al doilea fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
+
 if uploaded_file is None:
     st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
     st.stop()
