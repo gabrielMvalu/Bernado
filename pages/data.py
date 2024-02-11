@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 # Assuming your assets folder is in the same directory as your Streamlit script
-data_path = "assets/"
+data_path = ".assets/"
 
 # Dictionary to map data options to their corresponding filenames
 data_files = {
