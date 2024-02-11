@@ -9,32 +9,13 @@ import streamlit as st
 # PAGE SETUP
 #######################################
 
-st.set_page_config(page_title="Vanzari Dashboard", page_icon=":bar_chart:", layout="wide")
 
+st.set_page_config(page_title="Vanzari Dashboard", page_icon=":bar_chart:", layout="wide")
 st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
 st.markdown("Prototip aplicatie")
-
-
-# Checkbox pentru a decide dacă să încărcăm datele predefinite
-load_data_check = st.checkbox('Încărcați Datele Predefinite')
-
-# Buton pentru încărcarea datelor predefinite
-if load_data_check and st.button('Încărcați Datele'):
-    try:
-        data_path = './assets/Data1.xlsx'
-        df = pd.read_excel(data_path)
-        st.write(f"Date încărcate cu succes din {data_path}!")
-        st.dataframe(df)  # Afișarea DataFrame-ului în Streamlit
-    except Exception as e:
-        st.error(f"A apărut o eroare la încărcarea datelor: {e}")
-
-
-
-
 with st.sidebar:
     st.header("Configurare")
     uploaded_file = st.file_uploader("Choose a file")
-
 if uploaded_file is None:
     st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
     st.stop()
@@ -43,37 +24,17 @@ if uploaded_file is None:
 #######################################
 # DATA LOADING
 #######################################
-
-
 @st.cache_data
 def load_data(path: str):
     df = pd.read_excel(path)
     return df
-
-# Încărcarea și afișarea datelor din fișierul încărcat
-if uploaded_file is not None:
-    df_uploaded = load_data(uploaded_file)
-    with st.expander("Previzualizare Date Încărcate"):
-        st.dataframe(df_uploaded)
-
-# Afișarea unui mesaj dacă nu este selectat niciun fișier
-else:
-    st.info("Încărcați un document pentru analiză sau selectați opțiunea de date predefinite.", icon="ℹ️")
-
-
-
-
-
-#df = load_data(uploaded_file)
-#all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
-
-#with st.expander("Data Preview"):
-#    st.dataframe(
-#        df,
-#        column_config={"Year": st.column_config.NumberColumn(format="%d")},
-#    )
-
-
+df = load_data(uploaded_file)
+all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+with st.expander("Data Preview"):
+    st.dataframe(
+        df,
+        column_config={"Year": st.column_config.NumberColumn(format="%d")},
+    )
 
 #######################################
 # VISUALIZATION METHODS
