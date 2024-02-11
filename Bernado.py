@@ -35,6 +35,10 @@ with st.sidebar:
 # DATA LOADING
 #######################################
 
+# Definiția listei cu numele lunilor
+all_months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+
 
 @st.cache
 def load_data(path_or_buffer):
