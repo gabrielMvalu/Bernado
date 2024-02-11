@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-# Using an expander for data selection
-with st.expander("Select Data"):
-    # Radio buttons for data selection
-    selected_data = st.radio("Alege datele", ('Data1', 'Data2', 'Data3'))
+# Radio buttons for data selection directly in the app, not inside an expander
+selected_data = st.radio("Alege datele", ('Data1', 'Data2', 'Data3'))
 
 # Main page display logic based on data selection
 if selected_data == 'Data1':
@@ -14,9 +12,9 @@ elif selected_data == 'Data2':
 elif selected_data == 'Data3':
     df = pd.read_excel('./assets/data3.xlsx')
 else:
-    st.info("Va rugam alegeti datele pentru analiza", icon="ℹ️")
+    st.info("Vă rugăm alegeți datele pentru analiză", icon="ℹ️")
     st.stop()
 
 # Display the selected data
-st.write(f"Ati ales: {selected_data}")
+st.write(f"Ați ales: {selected_data}")
 st.dataframe(df)  # Display the DataFrame as a table
