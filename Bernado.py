@@ -15,11 +15,11 @@ st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
 st.markdown("Prototip aplicatie")
 
 
-# Checkbox pentru a decide dacă să încărcăm datele
-load_data_check = st.checkbox('Încărcați Datele')
+# Checkbox pentru a decide dacă să încărcăm datele predefinite
+load_data_check = st.checkbox('Încărcați Datele Predefinite')
 
-if load_data_check:
-    # Încărcarea datelor din fișierul Excel specificat
+# Buton pentru încărcarea datelor predefinite
+if load_data_check and st.button('Încărcați Datele'):
     try:
         data_path = './assets/Data1.xlsx'
         df = pd.read_excel(data_path)
@@ -27,8 +27,6 @@ if load_data_check:
         st.dataframe(df)  # Afișarea DataFrame-ului în Streamlit
     except Exception as e:
         st.error(f"A apărut o eroare la încărcarea datelor: {e}")
-else:
-    st.info("Bifați caseta de mai sus pentru a încărca datele.")
 
 
 
@@ -43,20 +41,6 @@ if uploaded_file is None:
 
 
 #######################################
-# CONFIGURATION AND FILE SELECTION
-#######################################
-
-# Numele fișierelor din folderul 'assets'
-file_names = ['Data1', 'Data2']  # Actualizați cu numele reale ale fișierelor dvs.
-file_options = ['./assets/' + file + '.xlsx' for file in file_names]
-
-# Crearea select box-urilor pentru selectarea fișierelor
-selected_file_1 = st.selectbox("Alegeți primul fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
-selected_file_2 = st.selectbox("Alegeți al doilea fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
-
-
-
-#######################################
 # DATA LOADING
 #######################################
 
@@ -66,17 +50,28 @@ def load_data(path: str):
     df = pd.read_excel(path)
     return df
 
-df1 = load_data(selected_file_1)
+# Încărcarea și afișarea datelor din fișierul încărcat
+if uploaded_file is not None:
+    df_uploaded = load_data(uploaded_file)
+    with st.expander("Previzualizare Date Încărcate"):
+        st.dataframe(df_uploaded)
+
+# Afișarea unui mesaj dacă nu este selectat niciun fișier
+else:
+    st.info("Încărcați un document pentru analiză sau selectați opțiunea de date predefinite.", icon="ℹ️")
 
 
-df = load_data(uploaded_file)
-all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
 
-with st.expander("Data Preview"):
-    st.dataframe(
-        df,
-        column_config={"Year": st.column_config.NumberColumn(format="%d")},
-    )
+
+
+#df = load_data(uploaded_file)
+#all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+
+#with st.expander("Data Preview"):
+#    st.dataframe(
+#        df,
+#        column_config={"Year": st.column_config.NumberColumn(format="%d")},
+#    )
 
 
 
