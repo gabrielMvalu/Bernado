@@ -14,14 +14,28 @@ st.set_page_config(page_title="Vanzari Dashboard", page_icon=":bar_chart:", layo
 st.header(':blue[Dashboard Vanzari Brenado SRL]', divider='rainbow')
 st.markdown("Prototip aplicatie")
 
+
+# Checkbox pentru a decide dacă să încărcăm datele
+load_data_check = st.checkbox('Încărcați Datele')
+
+if load_data_check:
+    # Încărcarea datelor din fișierul Excel specificat
+    try:
+        data_path = './assets/Data1.xlsx'
+        df = pd.read_excel(data_path)
+        st.write(f"Date încărcate cu succes din {data_path}!")
+        st.dataframe(df)  # Afișarea DataFrame-ului în Streamlit
+    except Exception as e:
+        st.error(f"A apărut o eroare la încărcarea datelor: {e}")
+else:
+    st.info("Bifați caseta de mai sus pentru a încărca datele.")
+
+
+
+
 with st.sidebar:
     st.header("Configurare")
     uploaded_file = st.file_uploader("Choose a file")
-
-
-# Crearea select box-urilor pentru selectarea fișierelor
-selected_file_1 = st.selectbox("Alegeți primul fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
-selected_file_2 = st.selectbox("Alegeți al doilea fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
 
 if uploaded_file is None:
     st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
