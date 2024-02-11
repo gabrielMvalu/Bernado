@@ -22,6 +22,21 @@ if uploaded_file is None:
     st.info(" Incarcati documentul pentru analiza", icon="ℹ️")
     st.stop()
 
+
+#######################################
+# CONFIGURATION AND FILE SELECTION
+#######################################
+
+# Numele fișierelor din folderul 'assets'
+file_names = ['Data1', 'Data2']  # Actualizați cu numele reale ale fișierelor dvs.
+file_options = ['./assets/' + file + '.xlsx' for file in file_names]
+
+# Crearea select box-urilor pentru selectarea fișierelor
+selected_file_1 = st.selectbox("Alegeți primul fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
+selected_file_2 = st.selectbox("Alegeți al doilea fișier", options=file_options, format_func=lambda x: x.split('/')[-1])
+
+
+
 #######################################
 # DATA LOADING
 #######################################
@@ -32,6 +47,8 @@ def load_data(path: str):
     df = pd.read_excel(path)
     return df
 
+df1 = load_data(selected_file_1)
+
 
 df = load_data(uploaded_file)
 all_months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
@@ -41,6 +58,8 @@ with st.expander("Data Preview"):
         df,
         column_config={"Year": st.column_config.NumberColumn(format="%d")},
     )
+
+
 
 #######################################
 # VISUALIZATION METHODS
