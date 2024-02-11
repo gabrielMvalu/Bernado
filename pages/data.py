@@ -6,9 +6,9 @@ data_path = ".assets/"
 
 # Dictionary to map data options to their corresponding filenames
 data_files = {
-    'Data1': 'data1.xlsx',
-    'Data2': 'data2.xlsx',
-    'Data3': 'data3.xlsx',
+    'Data1': 'Data1.xlsx',
+    'Data2': 'Data2.xlsx',
+    'Data3': 'Data3.xlsx',
 }
 
 # Using an expander for data selection
