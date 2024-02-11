@@ -28,7 +28,7 @@ with st.sidebar:
     
     # Afișează mesaj de informare dacă nu este selectată nici o sursă de date
     if data_source == "Predefined Data" and not uploaded_file:
-        st.info("Se vor încărca datele predefinite din './assets/Data1.xlsx'.")
+        st.info("Se vor prelucra datele Locale")
 
 
 #######################################
