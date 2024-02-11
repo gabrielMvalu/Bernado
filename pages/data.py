@@ -2,13 +2,13 @@ import streamlit as st
 import pandas as pd
 
 # Radio buttons for data selection directly in the app, not inside an expander
-selected_data = st.radio("Alege datele", ('Data1', 'Data2', 'Data3'))
+selected_data = st.radio("Alege datele", ('Date Iunie', 'Date Depozit', 'Date Predictii'))
 
 # Main page display logic based on data selection
 if selected_data == 'Data1':
-    df = pd.read_excel('./assets/data1.xlsx')
+    df = pd.read_excel('./assets/Data2.xlsx')
 elif selected_data == 'Data2':
-    df = pd.read_excel('./assets/data2.xlsx')
+    df = pd.read_excel('./assets/Data1.xlsx')
 elif selected_data == 'Data3':
     df = pd.read_excel('./assets/data3.xlsx')
 else:
