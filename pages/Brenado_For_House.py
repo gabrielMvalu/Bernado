@@ -22,7 +22,7 @@ st.markdown("---")
 st.subheader("📍 Selectează Locația")
 location = st.selectbox(
     "Alege depozitul/showroom:",
-    ["Showroom Galicea", "Depozit Grele Galicea", "Depozit 3"]
+    ["Showroom Galicea", "Depozit Grele Galicea", "Depozit Toamnei Craiova"]
 )
 
 st.markdown(f"### 📊 Date pentru: **{location}**")
