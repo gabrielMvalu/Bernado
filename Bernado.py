@@ -13,7 +13,6 @@ with st.sidebar:
     st.title("🏢 BRENADO")
     st.caption("Multi-Business Dashboard")
     st.markdown("---")
-    st.markdown("**📂 Navighează în paginile din stânga** ⬅️")
 
 # Pagina principală (Home)
 st.title("🏢 BRENADO Dashboard")
