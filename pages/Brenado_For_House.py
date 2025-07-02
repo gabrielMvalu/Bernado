@@ -3,8 +3,7 @@ import pandas as pd
 
 # Configurare pagină
 st.set_page_config(
-    page_title="BrenadoForHouse",
-    page_icon="🏠",
+    page_title="Brenado For House",
     layout="wide"
 )
 
