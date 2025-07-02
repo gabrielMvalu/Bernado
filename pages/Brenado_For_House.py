@@ -42,11 +42,11 @@ def load_top_produse():
 
 # Sidebar
 with st.sidebar:
-    st.title("🏠 BrenadoForHouse")
+    st.title("🏠 Brenado For House")
     st.caption("Segmentul rezidențial")
 
 # Header
-st.title("🏠 BrenadoForHouse")
+st.title("Brenado For House")
 st.subheader("Dashboard pentru segmentul rezidențial")
 
 st.markdown("---")
