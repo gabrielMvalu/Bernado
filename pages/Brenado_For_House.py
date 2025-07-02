@@ -52,6 +52,14 @@ st.subheader("Dashboard pentru segmentul rezidențial")
 
 st.markdown("---")
 
+# Selectare locație
+st.subheader("📍 Selectează Locația")
+location = st.selectbox(
+    "Alege depozitul/showroom:",
+    ["Showroom Galicea", "Depozit Grele Galicea", "Magazin Galicea"]
+)
+
+st.markdown(f"### 📊 Date pentru: **{location}**")
 
 # Încărcare date
 vanzari_df = load_vanzari_zi_clienti()
@@ -103,14 +111,22 @@ with tab1:
     st.dataframe(filtered_df, use_container_width=True)
     
     # Statistici rapide
-    if not filtered_df.empty and 'Valoare' in filtered_df.columns:
-        col1, col2, col3 = st.columns(3)
+    if not filtered_df.empty:
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
-            st.metric("Total Filtrat", f"{filtered_df['Valoare'].sum():,.0f} RON")
+            total_pret_contabil = filtered_df['Pret Contabil'].sum() if 'Pret Contabil' in filtered_df.columns else 0
+            st.metric("Total Preț Contabil", f"{total_pret_contabil:,.0f} RON")
         with col2:
-            st.metric("Înregistrări", len(filtered_df))
+            total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
+            st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
         with col3:
-            st.metric("Media", f"{filtered_df['Valoare'].mean():,.0f} RON")
+            total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
+            st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
+        with col4:
+            total_cost = filtered_df['Cost'].sum() if 'Cost' in filtered_df.columns else 0
+            st.metric("Total Cost", f"{total_cost:,.0f} RON")
+        with col5:
+            st.metric("Înregistrări", len(filtered_df))
 
 with tab2:
     st.subheader("🏆 Top Produse după Valoare")
@@ -134,4 +150,3 @@ with tab2:
             st.metric("Adaos Total", f"{produse_df['Adaos'].sum():,.0f} RON")
     else:
         st.error("Nu s-au putut încărca datele produselor")
-
