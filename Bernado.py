@@ -10,9 +10,11 @@ st.set_page_config(
 
 # Sidebar cu logo
 with st.sidebar:
-    st.title("🏢 BRENADO")
+    st.image("logo.png", width=200)
+    st.title("BRENADO")
     st.caption("Multi-Business Dashboard")
     st.markdown("---")
+    st.markdown("**📂 Navighează în paginile din stânga** ⬅️")
 
 # Pagina principală (Home)
 st.title("🏢 BRENADO Dashboard")
