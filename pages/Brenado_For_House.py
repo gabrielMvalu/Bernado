@@ -40,6 +40,36 @@ def load_top_produse():
             'Adaos': [500, 800]
         })
 
+@st.cache_data
+def load_balanta_la_data():
+    """Încarcă datele din Excel - Balanță la dată"""
+    try:
+        df = pd.read_excel("data/LaData.xlsx")
+        return df
+    except:
+        # Date demo dacă nu găsește fișierul
+        return pd.DataFrame({
+            'DenumireGest': ['Demo Gestiune'],
+            'Denumire': ['Produs Demo'],
+            'Stoc final': [100],
+            'ValoareStocFinal': [5000]
+        })
+
+@st.cache_data
+def load_balanta_perioada():
+    """Încarcă datele din Excel - Balanță pe perioadă"""
+    try:
+        df = pd.read_excel("data/Perioada.xlsx")
+        return df
+    except:
+        # Date demo dacă nu găsește fișierul
+        return pd.DataFrame({
+            'Denumire gestiune': ['Demo Gestiune'],
+            'Denumire': ['Produs Demo'],
+            'Stoc final': [100],
+            'ZileVechime': [10]
+        })
+
 # Sidebar
 with st.sidebar:
     st.title("🏠 Brenado For House")
@@ -177,19 +207,151 @@ if category == "Situație Intrări Ieșiri":
 elif category == "Balanță Stocuri":
     st.markdown("### 📦 Balanță Stocuri")
     
-    st.info("🚧 Secțiunea Balanță Stocuri va fi dezvoltată aici")
+    # Subcategorie pentru Balanță Stocuri
+    subcategory = st.selectbox(
+        "Selectează tipul de balanță:",
+        ["În Dată", "Perioadă"]
+    )
     
-    # Placeholder pentru dezvoltare viitoare
-    col1, col2, col3, col4 = st.columns(4)
+    # ===== ÎN DATĂ =====
+    if subcategory == "În Dată":
+        st.markdown("#### 📅 Balanță Stocuri la Dată")
+        
+        # Încărcare date
+        balanta_df = load_balanta_la_data()
+        
+        # Calculare metrici
+        total_stoc = balanta_df['Stoc final'].sum() if 'Stoc final' in balanta_df.columns else 0
+        valoare_stoc = balanta_df['ValoareStocFinal'].sum() if 'ValoareStocFinal' in balanta_df.columns else 0
+        numar_produse = len(balanta_df)
+        gestiuni_unice = balanta_df['DenumireGest'].nunique() if 'DenumireGest' in balanta_df.columns else 0
+        
+        # Metrici principale
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Stoc Total", f"{total_stoc:,.0f} buc/kg")
+        with col2:
+            st.metric("Valoare Stoc", f"{valoare_stoc:,.0f} RON")
+        with col3:
+            st.metric("Produse în Stoc", f"{numar_produse:,}")
+        with col4:
+            st.metric("Gestiuni", f"{gestiuni_unice}")
+        
+        st.markdown("---")
+        
+        # Filtrare date
+        col1, col2 = st.columns(2)
+        with col1:
+            if 'DenumireGest' in balanta_df.columns:
+                gestiune_filter = st.multiselect(
+                    "Filtrează după gestiune:",
+                    options=balanta_df['DenumireGest'].unique(),
+                    default=[]
+                )
+        with col2:
+            if 'Grupa' in balanta_df.columns:
+                grupa_filter = st.multiselect(
+                    "Filtrează după grupă:",
+                    options=balanta_df['Grupa'].unique(),
+                    default=[]
+                )
+        
+        # Aplicare filtre
+        filtered_balanta = balanta_df.copy()
+        if 'DenumireGest' in balanta_df.columns and gestiune_filter:
+            filtered_balanta = filtered_balanta[filtered_balanta['DenumireGest'].isin(gestiune_filter)]
+        if 'Grupa' in balanta_df.columns and grupa_filter:
+            filtered_balanta = filtered_balanta[filtered_balanta['Grupa'].isin(grupa_filter)]
+        
+        # Tabel cu date
+        st.dataframe(filtered_balanta, use_container_width=True)
+        
+        # Statistici filtrate
+        if not filtered_balanta.empty:
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                total_filtrat = filtered_balanta['Stoc final'].sum() if 'Stoc final' in filtered_balanta.columns else 0
+                st.metric("Stoc Filtrat", f"{total_filtrat:,.0f} buc")
+            with col2:
+                valoare_filtrata = filtered_balanta['ValoareStocFinal'].sum() if 'ValoareStocFinal' in filtered_balanta.columns else 0
+                st.metric("Valoare Filtrată", f"{valoare_filtrata:,.0f} RON")
+            with col3:
+                st.metric("Înregistrări", len(filtered_balanta))
+            with col4:
+                pret_mediu = filtered_balanta['Pret'].mean() if 'Pret' in filtered_balanta.columns else 0
+                st.metric("Preț Mediu", f"{pret_mediu:,.2f} RON")
     
-    with col1:
-        st.metric("Stoc Total", "Loading...")
-    with col2:
-        st.metric("Valoare Stoc", "Loading...")
-    with col3:
-        st.metric("Produse în Stoc", "Loading...")
-    with col4:
-        st.metric("Rotație Stoc", "Loading...")
-    
-    st.markdown("---")
-    st.write("Aici va fi dezvoltat modulul pentru Balanță Stocuri")
+    # ===== PERIOADĂ =====
+    elif subcategory == "Perioadă":
+        st.markdown("#### 📊 Balanță Stocuri pe Perioadă")
+        
+        # Încărcare date
+        perioada_df = load_balanta_perioada()
+        
+        # Calculare metrici
+        total_stoc = perioada_df['Stoc final'].sum() if 'Stoc final' in perioada_df.columns else 0
+        valoare_intrare = perioada_df['Valoare intrare'].sum() if 'Valoare intrare' in perioada_df.columns else 0
+        numar_produse = len(perioada_df)
+        vechime_medie = perioada_df['ZileVechime'].mean() if 'ZileVechime' in perioada_df.columns else 0
+        
+        # Metrici principale
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("Stoc Total", f"{total_stoc:,.0f} buc")
+        with col2:
+            st.metric("Valoare Intrare", f"{valoare_intrare:,.0f} RON")
+        with col3:
+            st.metric("Produse", f"{numar_produse:,}")
+        with col4:
+            st.metric("Vechime Medie", f"{vechime_medie:.0f} zile")
+        
+        st.markdown("---")
+        
+        # Tabs pentru analiza pe perioade
+        tab1, tab2 = st.tabs(["📋 Lista Stocuri", "⏰ Analiză Vechime"])
+        
+        with tab1:
+            st.subheader("📋 Lista Completă Stocuri")
+            
+            # Filtrare
+            col1, col2 = st.columns(2)
+            with col1:
+                if 'Denumire gestiune' in perioada_df.columns:
+                    gestiune_filter = st.multiselect(
+                        "Filtrează după gestiune:",
+                        options=perioada_df['Denumire gestiune'].unique(),
+                        default=[]
+                    )
+            
+            # Aplicare filtru
+            filtered_perioada = perioada_df.copy()
+            if 'Denumire gestiune' in perioada_df.columns and gestiune_filter:
+                filtered_perioada = filtered_perioada[filtered_perioada['Denumire gestiune'].isin(gestiune_filter)]
+            
+            # Tabel cu date
+            st.dataframe(filtered_perioada, use_container_width=True)
+        
+        with tab2:
+            st.subheader("⏰ Analiză Vechime Stocuri")
+            
+            # Calculare statistici vechime
+            if 'ZileVechime' in perioada_df.columns:
+                col1, col2, col3, col4 = st.columns(4)
+                
+                with col1:
+                    sub_0 = perioada_df['sub 0 zile'].sum() if 'sub 0 zile' in perioada_df.columns else 0
+                    st.metric("Sub 0 zile", f"{sub_0:,.0f} RON")
+                with col2:
+                    intre_1_7 = perioada_df['intre 1 si 7 zile'].sum() if 'intre 1 si 7 zile' in perioada_df.columns else 0
+                    st.metric("1-7 zile", f"{intre_1_7:,.0f} RON")
+                with col3:
+                    intre_8_14 = perioada_df['intre 8 si 14 zile'].sum() if 'intre 8 si 14 zile' in perioada_df.columns else 0
+                    st.metric("8-14 zile", f"{intre_8_14:,.0f} RON")
+                with col4:
+                    peste_15 = perioada_df['peste 15 zile'].sum() if 'peste 15 zile' in perioada_df.columns else 0
+                    st.metric("15+ zile", f"{peste_15:,.0f} RON")
+                
+                st.markdown("---")
+                st.info("📊 Analiza vezi cum se distribuie stocurile pe categorii de vechime")
