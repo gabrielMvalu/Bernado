@@ -135,5 +135,3 @@ with tab2:
     else:
         st.error("Nu s-au putut încărca datele produselor")
 
-st.markdown("---")
-st.caption(f"📊 Date pentru {location} | Actualizat în timp real")
