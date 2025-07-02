@@ -356,7 +356,7 @@ elif category == "Cumparari Intrari":
         # Încărcare date
         ciis_df = load_cumparari_ciis()
         
-        # Calculare metrici
+        # Calculare metrici generale
         total_cantitate = ciis_df['Cantitate'].sum() if 'Cantitate' in ciis_df.columns else 0
         total_valoare = ciis_df['Valoare'].sum() if 'Valoare' in ciis_df.columns else 0
         numar_produse = len(ciis_df)
@@ -375,4 +375,69 @@ elif category == "Cumparari Intrari":
             st.metric("Furnizori", f"{furnizori_unici}")
         
         st.markdown("---")
-        st.dataframe(ciis_df, use_container_width=True)
+        
+        # Selecții pentru filtrare cu afișare valori
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.subheader("🏢 Selectare Gestiune")
+            if 'Gestiune' in ciis_df.columns:
+                gestiune_selectata = st.selectbox(
+                    "Alege gestiunea:",
+                    options=["Toate"] + list(ciis_df['Gestiune'].unique()),
+                    key="gestiune_select"
+                )
+                
+                # Calculare și afișare valoare pentru gestiunea selectată
+                if gestiune_selectata != "Toate":
+                    valoare_gestiune = ciis_df[ciis_df['Gestiune'] == gestiune_selectata]['Valoare'].sum()
+                    st.success(f"💰 Valoare gestiune **{gestiune_selectata}**: **{valoare_gestiune:,.0f} RON**")
+        
+        with col2:
+            st.subheader("📂 Selectare Grupă")
+            if 'Denumire grupa' in ciis_df.columns:
+                grupa_selectata = st.selectbox(
+                    "Alege grupa:",
+                    options=["Toate"] + list(ciis_df['Denumire grupa'].unique()),
+                    key="grupa_select"
+                )
+                
+                # Calculare și afișare valoare pentru grupa selectată
+                if grupa_selectata != "Toate":
+                    valoare_grupa = ciis_df[ciis_df['Denumire grupa'] == grupa_selectata]['Valoare'].sum()
+                    st.success(f"💰 Valoare grupă **{grupa_selectata}**: **{valoare_grupa:,.0f} RON**")
+        
+        st.markdown("---")
+        
+        # Aplicare filtre pe tabel
+        filtered_ciis = ciis_df.copy()
+        
+        # Filtrare după gestiune
+        if 'Gestiune' in ciis_df.columns and gestiune_selectata != "Toate":
+            filtered_ciis = filtered_ciis[filtered_ciis['Gestiune'] == gestiune_selectata]
+        
+        # Filtrare după grupă
+        if 'Denumire grupa' in ciis_df.columns and grupa_selectata != "Toate":
+            filtered_ciis = filtered_ciis[filtered_ciis['Denumire grupa'] == grupa_selectata]
+        
+        # Afișare tabel filtrat
+        st.subheader(f"📋 Date Filtrate ({len(filtered_ciis)} înregistrări)")
+        st.dataframe(filtered_ciis, use_container_width=True)
+        
+        # Statistici pentru datele filtrate
+        if not filtered_ciis.empty:
+            st.markdown("#### 📊 Statistici Date Filtrate")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                cant_filtrata = filtered_ciis['Cantitate'].sum() if 'Cantitate' in filtered_ciis.columns else 0
+                st.metric("Cantitate Filtrată", f"{cant_filtrata:,.0f} buc")
+            with col2:
+                val_filtrata = filtered_ciis['Valoare'].sum() if 'Valoare' in filtered_ciis.columns else 0
+                st.metric("Valoare Filtrată", f"{val_filtrata:,.0f} RON")
+            with col3:
+                furnizori_filtrati = filtered_ciis['Furnizor'].nunique() if 'Furnizor' in filtered_ciis.columns else 0
+                st.metric("Furnizori", f"{furnizori_filtrati}")
+            with col4:
+                pret_mediu = filtered_ciis['Pret'].mean() if 'Pret' in filtered_ciis.columns else 0
+                st.metric("Preț Mediu", f"{pret_mediu:,.2f} RON")
