@@ -52,14 +52,6 @@ st.subheader("Dashboard pentru segmentul rezidențial")
 
 st.markdown("---")
 
-# Selectare locație
-st.subheader("📍 Selectează Locația")
-location = st.selectbox(
-    "Alege depozitul/showroom:",
-    ["Showroom Galicea", "Depozit Grele Galicea", "Magazin Galicea"]
-)
-
-st.markdown(f"### 📊 Date pentru: **{location}**")
 
 # Încărcare date
 vanzari_df = load_vanzari_zi_clienti()
