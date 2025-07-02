@@ -17,7 +17,8 @@ with st.sidebar:
     st.markdown("**📂 Navighează în paginile din stânga** ⬅️")
 
 # Pagina principală (Home)
-st.title("🏢 BRENADO Dashboard")
+st.image("logo.png", width=200)
+st.title("BRENADO Dashboard")
 st.subheader("Bun venit la sistemul de rapoarte multi-business")
 
 st.markdown("""
