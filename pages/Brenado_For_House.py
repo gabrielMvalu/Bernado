@@ -122,9 +122,28 @@ with tab1:
 with tab2:
     st.subheader("🏆 Top Produse după Valoare")
     
+    # Opțiuni de filtrare
+    col1, col2 = st.columns(2)
+    with col1:
+        show_option = st.selectbox(
+            "Afișează:",
+            ["Top 10", "Top 20", "Top 50", "Top 100", "Toate produsele"]
+        )
+    
     # Sortare și afișare top produse
     if 'Valoare' in produse_df.columns:
         top_produse = produse_df.sort_values('Valoare', ascending=False)
+        
+        # Aplicare filtrare bazată pe selecție
+        if show_option == "Top 10":
+            top_produse = top_produse.head(10)
+        elif show_option == "Top 20":
+            top_produse = top_produse.head(20)
+        elif show_option == "Top 50":
+            top_produse = top_produse.head(50)
+        elif show_option == "Top 100":
+            top_produse = top_produse.head(100)
+        # Pentru "Toate produsele" nu facem nimic (rămân toate)
         
         # Tabel top produse
         st.dataframe(top_produse, use_container_width=True)
