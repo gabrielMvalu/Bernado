@@ -13,7 +13,7 @@ st.set_page_config(
 def load_vanzari_zi_clienti():
     """Încarcă datele din Excel - Situația zi și clienți"""
     try:
-        df = pd.read_excel("data/Situatia Vanzarilor zi si clienti Dan Dobre 1153.xlsx")
+        df = pd.read_excel("data/svzc.xlsx")
         return df
     except:
         # Date demo dacă nu găsește fișierul
@@ -30,7 +30,7 @@ def load_vanzari_zi_clienti():
 def load_top_produse():
     """Încarcă datele din Excel - Top produse"""
     try:
-        df = pd.read_excel("data/Situatia Vanzarilor top produse Dan Dobre 1159 DorinCristov.xlsx")
+        df = pd.read_excel("data/svtp.xlsx")
         return df
     except:
         # Date demo dacă nu găsește fișierul
