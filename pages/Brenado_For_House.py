@@ -124,7 +124,7 @@ with tab2:
     
     # Sortare și afișare top produse
     if 'Valoare' in produse_df.columns:
-        top_produse = produse_df.sort_values('Valoare', ascending=False).head(20)
+        top_produse = produse_df.sort_values('Valoare', ascending=False)
         
         # Tabel top produse
         st.dataframe(top_produse, use_container_width=True)
