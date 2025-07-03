@@ -247,11 +247,29 @@ if category == "Situație Intrări Ieșiri":
                     default=[]
                 )
         
+        with col2:
+            if 'Data' in vanzari_df.columns:
+                # Convertește coloana Data la datetime dacă nu este deja
+                vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'], errors='coerce')
+                # Creează lista de date unice pentru dropdown
+                date_options = ["Toate zilele"] + sorted([str(date.date()) for date in vanzari_df['Data'].dropna().unique()])
+                date_filter = st.selectbox(
+                    "Filtrează după zi:",
+                    options=date_options,
+                    index=0
+                )
+        
         # Afișare date filtrate
+        filtered_df = vanzari_df.copy()
+        
+        # Aplicare filtru client
         if 'Client' in vanzari_df.columns and client_filter:
-            filtered_df = vanzari_df[vanzari_df['Client'].isin(client_filter)]
-        else:
-            filtered_df = vanzari_df
+            filtered_df = filtered_df[filtered_df['Client'].isin(client_filter)]
+        
+        # Aplicare filtru dată
+        if 'Data' in vanzari_df.columns and date_filter != "Toate zilele":
+            selected_date = pd.to_datetime(date_filter).date()
+            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date]
         
         # Tabel cu date
         st.dataframe(filtered_df, use_container_width=True)
@@ -273,7 +291,6 @@ if category == "Situație Intrări Ieșiri":
                 st.metric("Total Cost", f"{total_cost:,.0f} RON")
             with col5:
                 st.metric("Înregistrări", len(filtered_df))
-
     with tab2:
         st.subheader("🏆 Top Produse după Valoare")
         
