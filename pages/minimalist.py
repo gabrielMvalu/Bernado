@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import datetime
 import numpy as np
 
@@ -149,21 +148,19 @@ if category == "Situație Intrări Ieșiri":
 
     st.markdown("---")
 
-    # Tabs pentru diferite secțiuni - ADĂUGAT AL 3-LEA TAB PENTRU ANALIZE INTERACTIVE
+    # Tabs pentru diferite secțiuni
     tab1, tab2, tab3 = st.tabs(["📊 Situația Zi și Clienți", "🏆 Top Produse", "📈 Analize Interactive"])
 
     with tab1:
         st.subheader("📊 Situația Vânzărilor pe Zi și Clienți")
         
         # Filtrare date
-        col1, col2 = st.columns(2)
-        with col1:
-            if 'Client' in vanzari_df.columns:
-                client_filter = st.multiselect(
-                    "Filtrează după client:",
-                    options=vanzari_df['Client'].unique(),
-                    default=[]
-                )
+        if 'Client' in vanzari_df.columns:
+            client_filter = st.multiselect(
+                "Filtrează după client:",
+                options=vanzari_df['Client'].unique(),
+                default=[]
+            )
         
         # Afișare date filtrate
         if 'Client' in vanzari_df.columns and client_filter:
@@ -196,12 +193,10 @@ if category == "Situație Intrări Ieșiri":
         st.subheader("🏆 Top Produse după Valoare")
         
         # Opțiuni de filtrare
-        col1, col2 = st.columns(2)
-        with col1:
-            show_option = st.selectbox(
-                "Afișează:",
-                ["Top 10", "Top 20", "Top 50", "Top 100", "Toate produsele"]
-            )
+        show_option = st.selectbox(
+            "Afișează:",
+            ["Top 10", "Top 20", "Top 50", "Top 100", "Toate produsele"]
+        )
         
         # Sortare și afișare top produse
         if 'Valoare' in produse_df.columns:
@@ -230,261 +225,142 @@ if category == "Situație Intrări Ieșiri":
                 st.metric("Valoare Totală", f"{produse_df['Valoare'].sum():,.0f} RON")
             with col4:
                 st.metric("Adaos Total", f"{produse_df['Adaos'].sum():,.0f} RON")
-        else:
-            st.error("Nu s-au putut încărca datele produselor")
 
     with tab3:
         st.markdown("#### 📈 Analize Interactive & Business Intelligence")
         
-        # ===== ENHANCED KPI DASHBOARD =====
+        # KPI Dashboard Avansat
         st.markdown("##### 💡 Dashboard KPI Avansat")
         
         # Calculare metrici avansați
         if not vanzari_df.empty and 'Data' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
             # Convertire data
             vanzari_df_copy = vanzari_df.copy()
-            vanzari_df_copy['Data'] = pd.to_datetime(vanzari_df_copy['Data'], errors='coerce')
-            vanzari_df_copy = vanzari_df_copy.dropna(subset=['Data'])
-            
-            # Calculare period-over-period
-            today = vanzari_df_copy['Data'].max()
-            last_week = today - pd.Timedelta(days=7)
-            current_week_sales = vanzari_df_copy[vanzari_df_copy['Data'] > last_week]['Valoare'].sum()
-            prev_week_sales = vanzari_df_copy[
-                (vanzari_df_copy['Data'] <= last_week) & 
-                (vanzari_df_copy['Data'] > last_week - pd.Timedelta(days=7))
-            ]['Valoare'].sum()
-            
-            week_change = ((current_week_sales - prev_week_sales) / max(prev_week_sales, 1)) * 100
-            
-            # KPI Cards cu Delta
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                st.metric(
-                    "🚀 Vânzări Săptămâna Curentă", 
-                    f"{current_week_sales:,.0f} RON",
-                    delta=f"{week_change:+.1f}%"
-                )
-            
-            with col2:
-                avg_daily = current_week_sales / 7 if current_week_sales > 0 else 0
-                st.metric(
-                    "📅 Media Zilnică", 
-                    f"{avg_daily:,.0f} RON",
-                    delta="Săptămâna curentă"
-                )
-            
-            with col3:
-                top_client_value = vanzari_df_copy.groupby('Client')['Valoare'].sum().max() if 'Client' in vanzari_df_copy.columns else 0
-                st.metric(
-                    "⭐ Top Client", 
-                    f"{top_client_value:,.0f} RON",
-                    delta="Cel mai valoros"
-                )
-            
-            with col4:
-                transaction_count = len(vanzari_df_copy)
-                avg_transaction = vanzari_df_copy['Valoare'].mean()
-                st.metric(
-                    "💳 Valoare Medie/Tranzacție", 
-                    f"{avg_transaction:,.0f} RON",
-                    delta=f"{transaction_count} tranzacții"
-                )
-        
-        st.markdown("---")
-        
-        # ===== INTERACTIVE CHARTS SECTION =====
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("##### 📊 Evoluția Vânzărilor în Timp")
-            
-            if not vanzari_df.empty and 'Data' in vanzari_df.columns:
-                # Pregătire date pentru grafic temporal
-                daily_sales = vanzari_df_copy.groupby(vanzari_df_copy['Data'].dt.date)['Valoare'].sum().reset_index()
-                daily_sales.columns = ['Data', 'Valoare']
-                daily_sales = daily_sales.sort_values('Data')
+            try:
+                vanzari_df_copy['Data'] = pd.to_datetime(vanzari_df_copy['Data'], errors='coerce')
+                vanzari_df_copy = vanzari_df_copy.dropna(subset=['Data'])
                 
-                # Grafic line interactiv cu stil modern
-                fig_line = px.line(
-                    daily_sales, 
-                    x='Data', 
-                    y='Valoare',
-                    title="",
-                    line_shape='spline'
-                )
+                # Calculare period-over-period
+                today = vanzari_df_copy['Data'].max()
+                last_week = today - pd.Timedelta(days=7)
+                current_week_sales = vanzari_df_copy[vanzari_df_copy['Data'] > last_week]['Valoare'].sum()
+                prev_week_sales = vanzari_df_copy[
+                    (vanzari_df_copy['Data'] <= last_week) & 
+                    (vanzari_df_copy['Data'] > last_week - pd.Timedelta(days=7))
+                ]['Valoare'].sum()
                 
-                fig_line.update_traces(
-                    line=dict(color='#667eea', width=3),
-                    fill='tonexty',
-                    fillcolor='rgba(102, 126, 234, 0.1)'
-                )
+                week_change = ((current_week_sales - prev_week_sales) / max(prev_week_sales, 1)) * 100
                 
-                fig_line.update_layout(
-                    height=350,
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    xaxis=dict(gridcolor='rgba(128,128,128,0.2)'),
-                    yaxis=dict(gridcolor='rgba(128,128,128,0.2)')
-                )
+                # KPI Cards cu Delta
+                col1, col2, col3, col4 = st.columns(4)
                 
-                st.plotly_chart(fig_line, use_container_width=True)
-        
-        with col2:
-            st.markdown("##### 🏆 Distribuția Top 10 Clienți")
-            
-            if not vanzari_df.empty and 'Client' in vanzari_df.columns:
-                # Top 10 clienți pentru donut chart
-                top_clients = vanzari_df_copy.groupby('Client')['Valoare'].sum().sort_values(ascending=False).head(10)
+                with col1:
+                    st.metric(
+                        "🚀 Vânzări Săptămâna Curentă", 
+                        f"{current_week_sales:,.0f} RON",
+                        delta=f"{week_change:+.1f}%"
+                    )
                 
-                # Donut chart modern
-                fig_donut = px.pie(
-                    values=top_clients.values,
-                    names=top_clients.index,
-                    title="",
-                    hole=0.4
-                )
+                with col2:
+                    avg_daily = current_week_sales / 7 if current_week_sales > 0 else 0
+                    st.metric(
+                        "📅 Media Zilnică", 
+                        f"{avg_daily:,.0f} RON",
+                        delta="Săptămâna curentă"
+                    )
                 
-                fig_donut.update_traces(
-                    textposition='inside',
-                    textinfo='percent+label',
-                    textfont_size=10,
-                    marker=dict(line=dict(color='#FFFFFF', width=2))
-                )
+                with col3:
+                    if 'Client' in vanzari_df_copy.columns:
+                        top_client_value = vanzari_df_copy.groupby('Client')['Valoare'].sum().max()
+                    else:
+                        top_client_value = 0
+                    st.metric(
+                        "⭐ Top Client", 
+                        f"{top_client_value:,.0f} RON",
+                        delta="Cel mai valoros"
+                    )
                 
-                fig_donut.update_layout(
-                    height=350,
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    showlegend=False,
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)'
-                )
+                with col4:
+                    transaction_count = len(vanzari_df_copy)
+                    avg_transaction = vanzari_df_copy['Valoare'].mean()
+                    st.metric(
+                        "💳 Valoare Medie/Tranzacție", 
+                        f"{avg_transaction:,.0f} RON",
+                        delta=f"{transaction_count} tranzacții"
+                    )
                 
-                st.plotly_chart(fig_donut, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # ===== ADVANCED ANALYTICS SECTION =====
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.markdown("##### 🔥 Heatmap Activitate Zilnică")
-            
-            if not vanzari_df.empty:
-                # Creare heatmap pentru activitatea pe zile
-                vanzari_df_copy['Ziua'] = vanzari_df_copy['Data'].dt.day_name()
-                vanzari_df_copy['Ora'] = vanzari_df_copy['Data'].dt.hour
+                st.markdown("---")
                 
-                # Simulare ore pentru demo (în realitate ar fi din data)
-                np.random.seed(42)
-                vanzari_df_copy['Ora'] = np.random.randint(8, 18, len(vanzari_df_copy))
+                # Grafice Interactive
+                col1, col2 = st.columns(2)
                 
-                heatmap_data = vanzari_df_copy.groupby(['Ziua', 'Ora'])['Valoare'].sum().reset_index()
+                with col1:
+                    st.markdown("##### 📊 Evoluția Vânzărilor în Timp")
+                    
+                    # Pregătire date pentru grafic temporal
+                    daily_sales = vanzari_df_copy.groupby(vanzari_df_copy['Data'].dt.date)['Valoare'].sum().reset_index()
+                    daily_sales.columns = ['Data', 'Valoare']
+                    daily_sales = daily_sales.sort_values('Data')
+                    
+                    # Grafic line interactiv
+                    fig_line = px.line(
+                        daily_sales, 
+                        x='Data', 
+                        y='Valoare',
+                        title=""
+                    )
+                    
+                    fig_line.update_traces(
+                        line=dict(color='#667eea', width=3)
+                    )
+                    
+                    fig_line.update_layout(
+                        height=350,
+                        margin=dict(l=0, r=0, t=20, b=0)
+                    )
+                    
+                    st.plotly_chart(fig_line, use_container_width=True)
                 
-                # Pivot pentru heatmap
-                heatmap_pivot = heatmap_data.pivot(index='Ziua', columns='Ora', values='Valoare').fillna(0)
+                with col2:
+                    st.markdown("##### 🏆 Distribuția Top 10 Clienți")
+                    
+                    if 'Client' in vanzari_df_copy.columns:
+                        # Top 10 clienți pentru donut chart
+                        top_clients = vanzari_df_copy.groupby('Client')['Valoare'].sum().sort_values(ascending=False).head(10)
+                        
+                        # Donut chart modern
+                        fig_donut = px.pie(
+                            values=top_clients.values,
+                            names=top_clients.index,
+                            title="",
+                            hole=0.4
+                        )
+                        
+                        fig_donut.update_layout(
+                            height=350,
+                            margin=dict(l=0, r=0, t=20, b=0),
+                            showlegend=False
+                        )
+                        
+                        st.plotly_chart(fig_donut, use_container_width=True)
                 
-                fig_heatmap = px.imshow(
-                    heatmap_pivot,
-                    aspect="auto",
-                    color_continuous_scale="viridis",
-                    title=""
-                )
+                # Business Insights
+                st.markdown("---")
+                st.markdown("##### 🧠 Business Insights")
                 
-                fig_heatmap.update_layout(
-                    height=300,
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    xaxis_title="Ora Zilei",
-                    yaxis_title="Ziua Săptămânii"
-                )
+                col1, col2, col3 = st.columns(3)
                 
-                st.plotly_chart(fig_heatmap, use_container_width=True)
-        
-        with col2:
-            st.markdown("##### 💎 Analiza Valoare vs Adaos")
-            
-            if 'Valoare' in vanzari_df.columns and 'Adaos' in vanzari_df.columns:
-                # Scatter plot pentru relația valoare-adaos
-                fig_scatter = px.scatter(
-                    vanzari_df_copy,
-                    x='Valoare',
-                    y='Adaos',
-                    size='Pret Contabil' if 'Pret Contabil' in vanzari_df.columns else None,
-                    color='Client' if 'Client' in vanzari_df.columns else None,
-                    title="",
-                    opacity=0.7
-                )
+                with col1:
+                    st.info("📊 **Trend Analysis** - Vânzările arată o tendință pozitivă cu vârfuri în anumite perioade.")
                 
-                fig_scatter.update_layout(
-                    height=300,
-                    margin=dict(l=0, r=0, t=20, b=0),
-                    plot_bgcolor='rgba(0,0,0,0)',
-                    paper_bgcolor='rgba(0,0,0,0)',
-                    showlegend=False
-                )
+                with col2:
+                    st.success("🎯 **Client Focus** - Top clienți generează majoritatea valorii. Oportunitate de diversificare.")
                 
-                st.plotly_chart(fig_scatter, use_container_width=True)
-        
-        # ===== BUSINESS INSIGHTS =====
-        st.markdown("---")
-        st.markdown("##### 🧠 Business Insights")
-        
-        insight_col1, insight_col2, insight_col3 = st.columns(3)
-        
-        with insight_col1:
-            st.info("""
-            **📊 Trend Analysis**
-            Vânzările arată o tendință de creștere pe perioada analizată, cu vârfuri în anumite zile ale săptămânii.
-            """)
-        
-        with insight_col2:
-            st.success("""
-            **🎯 Client Focus**
-            Top 3 clienți generează 60% din valoarea totală. Oportunitate de diversificare a portofoliului.
-            """)
-        
-        with insight_col3:
-            st.warning("""
-            **💡 Optimization**
-            Identificare pattern-uri sezonale pentru optimizarea stocurilor și planificarea campaniilor.
-            """)
-        
-        # Advanced Filters Section
-        st.markdown("---")
-        st.markdown("##### ⚙️ Filtre Avansate pentru Analiză")
-        
-        filter_col1, filter_col2, filter_col3 = st.columns(3)
-        
-        with filter_col1:
-            if not vanzari_df.empty and 'Data' in vanzari_df.columns:
-                date_range = st.date_input(
-                    "Selectează perioada:",
-                    value=(vanzari_df_copy['Data'].min().date(), vanzari_df_copy['Data'].max().date()),
-                    key="date_range_analysis"
-                )
-        
-        with filter_col2:
-            if 'Client' in vanzari_df.columns:
-                selected_clients = st.multiselect(
-                    "Filtrează clienți:",
-                    options=vanzari_df['Client'].unique(),
-                    default=[],
-                    key="clients_analysis"
-                )
-        
-        with filter_col3:
-            min_value = st.number_input(
-                "Valoare minimă tranzacție:",
-                min_value=0,
-                value=0,
-                key="min_value_analysis"
-            )
-        
-        if st.button("🔍 Aplică Filtre și Regenerează Analize", type="primary"):
-            st.success("Filtrele au fost aplicate! Analizele vor fi regenerate cu noile criterii.")
-            st.balloons()  # Efect vizual
+                with col3:
+                    st.warning("💡 **Optimization** - Identificare pattern-uri pentru optimizarea stocurilor.")
+                
+            except Exception as e:
+                st.error(f"Eroare la procesarea datelor: {e}")
 
 # ===== BALANȚĂ STOCURI =====
 elif category == "Balanță Stocuri":
@@ -520,14 +396,12 @@ elif category == "Balanță Stocuri":
         st.markdown("---")
         
         # Filtrare date
-        col1, col2 = st.columns(2)
-        with col1:
-            if 'DenumireGest' in balanta_df.columns:
-                gestiune_filter = st.multiselect(
-                    "Filtrează după gestiune:",
-                    options=balanta_df['DenumireGest'].unique(),
-                    default=[]
-                )
+        if 'DenumireGest' in balanta_df.columns:
+            gestiune_filter = st.multiselect(
+                "Filtrează după gestiune:",
+                options=balanta_df['DenumireGest'].unique(),
+                default=[]
+            )
         
         # Aplicare filtre
         filtered_balanta = balanta_df.copy()
