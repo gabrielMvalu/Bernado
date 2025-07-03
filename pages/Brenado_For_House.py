@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
 
 # Configurare pagină
 st.set_page_config(
@@ -8,7 +7,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Funcții pentru încărcarea datelor - ORIGINALE
+# Funcții pentru încărcarea datelor
 @st.cache_data
 def load_vanzari_zi_clienti():
     """Încarcă datele din Excel - Situația zi și clienți"""
@@ -97,113 +96,6 @@ def load_cumparari_ciis():
             'Furnizor': ['Demo Furnizor']
         })
 
-# NOUL - Funcții pentru încărcarea datelor de facturi
-@st.cache_data
-def load_neachitate():
-    """Încarcă datele din Excel - Facturi Neachitate"""
-    try:
-        # Încerc mai multe căi posibile pentru fișier
-        possible_paths = ["Neachitate.xlsx", "data/Neachitate.xlsx", "./Neachitate.xlsx"]
-        df = None
-        
-        for path in possible_paths:
-            try:
-                df = pd.read_excel(path)
-                break
-            except FileNotFoundError:
-                continue
-        
-        if df is None:
-            raise FileNotFoundError("Nu s-a găsit fișierul Neachitate.xlsx în nicio locație")
-        
-        # Filtrez doar facturile reale (nu totalurile)
-        df = df[df['Furnizor'].notna() & ~df['Furnizor'].str.contains('Total  ', na=False) & df['Numar'].notna()]
-        
-        # Calculez zilele de întârziere
-        df['Data'] = pd.to_datetime(df['Data'])
-        df['DataScadenta'] = pd.to_datetime(df['DataScadenta'])
-        today = pd.Timestamp.now()
-        df['Zile Intarziere'] = (today - df['DataScadenta']).dt.days
-        df['Zile Intarziere'] = df['Zile Intarziere'].apply(lambda x: max(0, x))
-        
-        # Redenumesc coloanele pentru consistență
-        df = df.rename(columns={
-            'Numar': 'Nr Factura',
-            'Data': 'Data Factura',
-            'DataScadenta': 'Data Scadenta',
-            'Total': 'Suma',
-            'Sold': 'Rest de Plata'
-        })
-        
-        return df
-    except Exception as e:
-        st.error(f"Eroare la încărcarea datelor neachitate: {e}")
-        return pd.DataFrame({
-            'Furnizor': ['Furnizor Demo 1', 'Furnizor Demo 2'],
-            'Nr Factura': ['F001', 'F002'],
-            'Data Factura': ['2024-01-01', '2024-01-02'],
-            'Data Scadenta': ['2024-01-31', '2024-02-01'],
-            'Suma': [5000, 3000],
-            'Rest de Plata': [5000, 1500],
-            'Zile Intarziere': [5, 0],
-            'Valuta': ['EUR', 'EUR'],
-            'Serie': ['Demo1', 'Demo2'],
-            'PL': ['PL 01', 'PL 02']
-        })
-
-@st.cache_data
-def load_neincasate():
-    """Încarcă datele din Excel - Facturi Neincasate"""
-    try:
-        # Încerc mai multe căi posibile pentru fișier
-        possible_paths = ["Neincasate.xlsx", "data/Neincasate.xlsx", "./Neincasate.xlsx"]
-        df = None
-        
-        for path in possible_paths:
-            try:
-                df = pd.read_excel(path)
-                break
-            except FileNotFoundError:
-                continue
-        
-        if df is None:
-            raise FileNotFoundError("Nu s-a găsit fișierul Neincasate.xlsx în nicio locație")
-        
-        # Filtrez doar facturile reale (nu totalurile)
-        df = df[df['Client'].notna() & ~df['Client'].str.contains('Total  ', na=False) & df['NumarDoc'].notna()]
-        
-        # Calculez zilele de întârziere
-        df['Data'] = pd.to_datetime(df['Data'])
-        df['DataScadenta'] = pd.to_datetime(df['DataScadenta'])
-        today = pd.Timestamp.now()
-        df['Zile Intarziere'] = (today - df['DataScadenta']).dt.days
-        df['Zile Intarziere'] = df['Zile Intarziere'].apply(lambda x: max(0, x))
-        
-        # Redenumesc coloanele pentru consistență
-        df = df.rename(columns={
-            'NumarDoc': 'Nr Factura',
-            'Data': 'Data Factura',
-            'DataScadenta': 'Data Scadenta',
-            'Total': 'Suma',
-            'Sold': 'Rest de Incasat'
-        })
-        
-        return df
-    except Exception as e:
-        st.error(f"Eroare la încărcarea datelor neincasate: {e}")
-        return pd.DataFrame({
-            'Client': ['Client Demo 1', 'Client Demo 2'],
-            'Nr Factura': ['V001', 'V002'],
-            'Data Factura': ['2024-01-01', '2024-01-02'],
-            'Data Scadenta': ['2024-01-31', '2024-02-01'],
-            'Suma': [8000, 6000],
-            'Rest de Incasat': [8000, 3000],
-            'Zile Intarziere': [10, 0],
-            'Valuta': ['LEI', 'LEI'],
-            'Serie': ['Demo1', 'Demo2'],
-            'Agent': ['Agent Demo', 'Agent Demo']
-        })
-
 # Sidebar
 with st.sidebar:
     st.title("🏠 Brenado For House")
@@ -215,16 +107,16 @@ st.subheader("Dashboard pentru segmentul rezidențial")
 
 st.markdown("---")
 
-# Selectare categorie principală - ADĂUGAT DOAR "Plăți Facturi"
+# Selectare categorie principală
 st.subheader("📂 Selectează Categoria")
 category = st.selectbox(
     "Alege tipul de raport:",
-    ["Situație Intrări Ieșiri", "Balanță Stocuri", "Cumparari Intrari", "Plăți Facturi"]
+    ["Situație Intrări Ieșiri", "Balanță Stocuri", "Cumparari Intrari"]
 )
 
 st.markdown("---")
 
-# ===== SITUAȚIE INTRĂRI IEȘIRI ===== [PĂSTRAT ORIGINAL]
+# ===== SITUAȚIE INTRĂRI IEȘIRI =====
 if category == "Situație Intrări Ieșiri":
     st.markdown("### 📊 Situație Intrări Ieșiri")
     
@@ -336,7 +228,7 @@ if category == "Situație Intrări Ieșiri":
         else:
             st.error("Nu s-au putut încărca datele produselor")
 
-# ===== BALANȚĂ STOCURI ===== [PĂSTRAT ORIGINAL]
+# ===== BALANȚĂ STOCURI =====
 elif category == "Balanță Stocuri":
     st.markdown("### 📦 Balanță Stocuri")
     
@@ -414,7 +306,7 @@ elif category == "Balanță Stocuri":
         st.markdown("---")
         st.dataframe(perioada_df, use_container_width=True)
 
-# ===== CUMPARARI INTRARI ===== [PĂSTRAT ORIGINAL]
+# ===== CUMPARARI INTRARI =====
 elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
     
@@ -539,370 +431,3 @@ elif category == "Cumparari Intrari":
             with col4:
                 pret_mediu = filtered_ciis['Pret'].mean() if 'Pret' in filtered_ciis.columns else 0
                 st.metric("Preț Mediu", f"{pret_mediu:,.2f} RON")
-
-# ===== PLĂȚI FACTURI ===== [NOU - ADĂUGAT]
-elif category == "Plăți Facturi":
-    st.markdown("### 💳 Plăți Facturi")
-    
-    # Verificare existența fișierelor
-    st.markdown("#### 🔍 Status Fișiere:")
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        possible_paths_neachitate = ["Neachitate.xlsx", "data/Neachitate.xlsx", "./Neachitate.xlsx"]
-        neachitate_found = False
-        for path in possible_paths_neachitate:
-            if os.path.exists(path):
-                st.success(f"✅ Găsit Neachitate.xlsx la: {path}")
-                neachitate_found = True
-                break
-        if not neachitate_found:
-            st.error("❌ Nu s-a găsit Neachitate.xlsx")
-            st.info("📁 Directorul curent: " + os.getcwd())
-            st.info("📂 Fișiere în directorul curent: " + str(os.listdir(".")))
-    
-    with col2:
-        possible_paths_neincasate = ["Neincasate.xlsx", "data/Neincasate.xlsx", "./Neincasate.xlsx"]
-        neincasate_found = False
-        for path in possible_paths_neincasate:
-            if os.path.exists(path):
-                st.success(f"✅ Găsit Neincasate.xlsx la: {path}")
-                neincasate_found = True
-                break
-        if not neincasate_found:
-            st.error("❌ Nu s-a găsit Neincasate.xlsx")
-    
-    st.markdown("---")
-    
-    # Tabs pentru subcategoriile Plăți Facturi
-    tab1, tab2 = st.tabs(["❌ Neachitate", "📥 Neincasate"])
-    
-    with tab1:
-        st.markdown("#### ❌ Facturi Neachitate")
-        
-        # Încărcare date
-        neachitate_df = load_neachitate()
-        
-        # Calculare metrici
-        total_neachitat = neachitate_df['Rest de Plata'].sum() if 'Rest de Plata' in neachitate_df.columns else 0
-        numar_facturi = len(neachitate_df)
-        furnizori_unici = neachitate_df['Furnizor'].nunique() if 'Furnizor' in neachitate_df.columns else 0
-        
-        # Calculare facturi restante (cu întârziere)
-        facturi_restante = 0
-        if 'Zile Intarziere' in neachitate_df.columns:
-            facturi_restante = len(neachitate_df[neachitate_df['Zile Intarziere'] > 0])
-        
-        # Determinare valută principală
-        valuta_principala = "EUR"
-        if 'Valuta' in neachitate_df.columns and len(neachitate_df) > 0:
-            valuta_principala = neachitate_df['Valuta'].iloc[0]
-        
-        # Metrici principale
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Total Neachitat", f"{total_neachitat:,.2f} {valuta_principala}", delta=None, delta_color="inverse")
-        with col2:
-            st.metric("Facturi Neachitate", f"{numar_facturi:,}")
-        with col3:
-            st.metric("Furnizori", f"{furnizori_unici}")
-        with col4:
-            st.metric("Facturi Restante", f"{facturi_restante}", delta=None, delta_color="inverse")
-        
-        st.markdown("---")
-        
-        # Filtrare date
-        col1, col2 = st.columns(2)
-        with col1:
-            if 'Furnizor' in neachitate_df.columns:
-                furnizor_filter = st.multiselect(
-                    "Filtrează după furnizor:",
-                    options=sorted(neachitate_df['Furnizor'].unique()),
-                    default=[],
-                    key="furnizor_neachitate"
-                )
-        
-        with col2:
-            # Filtru pentru facturile restante
-            show_restante = st.checkbox("Afișează doar facturile restante", key="restante_neachitate")
-        
-        # Adaug filtrare după valută
-        col3, col4 = st.columns(2)
-        with col3:
-            if 'Valuta' in neachitate_df.columns:
-                valute_disponibile = neachitate_df['Valuta'].unique()
-                valuta_filter = st.selectbox(
-                    "Filtrează după valută:",
-                    options=["Toate"] + list(valute_disponibile),
-                    key="valuta_neachitate"
-                )
-            else:
-                valuta_filter = "Toate"
-        
-        with col4:
-            # Afișez totaluri pe valute
-            if 'Valuta' in neachitate_df.columns and 'Rest de Plata' in neachitate_df.columns:
-                st.markdown("**💰 Totaluri pe valute:**")
-                for valuta in neachitate_df['Valuta'].unique():
-                    total_valuta = neachitate_df[neachitate_df['Valuta'] == valuta]['Rest de Plata'].sum()
-                    st.write(f"• {valuta}: {total_valuta:,.2f}")
-        
-        # Aplicare filtre
-        filtered_neachitate = neachitate_df.copy()
-        
-        if 'Furnizor' in neachitate_df.columns and furnizor_filter:
-            filtered_neachitate = filtered_neachitate[filtered_neachitate['Furnizor'].isin(furnizor_filter)]
-        
-        if show_restante and 'Zile Intarziere' in neachitate_df.columns:
-            filtered_neachitate = filtered_neachitate[filtered_neachitate['Zile Intarziere'] > 0]
-        
-        if valuta_filter != "Toate" and 'Valuta' in neachitate_df.columns:
-            filtered_neachitate = filtered_neachitate[filtered_neachitate['Valuta'] == valuta_filter]
-        
-        # Sortare după data scadenței
-        if 'Data Scadenta' in filtered_neachitate.columns:
-            filtered_neachitate = filtered_neachitate.sort_values('Data Scadenta')
-        
-        # Afișare tabel
-        st.subheader(f"📋 Facturi Neachitate ({len(filtered_neachitate)} înregistrări)")
-        
-        # Selectez coloanele pentru afișare
-        columns_to_show = ['Furnizor', 'Nr Factura', 'Serie', 'Data Factura', 'Data Scadenta', 
-                          'Valuta', 'Suma', 'Rest de Plata', 'Zile Intarziere', 'PL']
-        available_columns = [col for col in columns_to_show if col in filtered_neachitate.columns]
-        
-        # Formatez datele pentru afișare
-        display_df = filtered_neachitate[available_columns].copy()
-        
-        # Formatez valorile monetare și datele
-        if 'Suma' in display_df.columns:
-            display_df['Suma'] = display_df['Suma'].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "0")
-        if 'Rest de Plata' in display_df.columns:
-            display_df['Rest de Plata'] = display_df['Rest de Plata'].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "0")
-        if 'Data Factura' in display_df.columns:
-            display_df['Data Factura'] = display_df['Data Factura'].dt.strftime('%d.%m.%Y')
-        if 'Data Scadenta' in display_df.columns:
-            display_df['Data Scadenta'] = display_df['Data Scadenta'].dt.strftime('%d.%m.%Y')
-        
-        # Stylez tabelul pentru a evidenția facturile restante
-        def highlight_restante(row):
-            try:
-                zile = float(row['Zile Intarziere']) if 'Zile Intarziere' in row and pd.notna(row['Zile Intarziere']) else 0
-                if zile > 30:
-                    return ['background-color: #ffebee'] * len(row)  # Roșu deschis pentru întârziere mare
-                elif zile > 0:
-                    return ['background-color: #fff3e0'] * len(row)  # Portocaliu deschis pentru întârziere mică
-                else:
-                    return [''] * len(row)
-            except:
-                return [''] * len(row)
-        
-        if 'Zile Intarziere' in display_df.columns:
-            styled_df = display_df.style.apply(highlight_restante, axis=1)
-            st.dataframe(styled_df, use_container_width=True)
-        else:
-            st.dataframe(display_df, use_container_width=True)
-        
-        # Legendă pentru culori
-        if 'Zile Intarziere' in filtered_neachitate.columns:
-            st.markdown("""
-            **Legendă culori:**
-            - 🟡 Galben: Întârziere 1-30 zile
-            - 🔴 Roșu: Întârziere peste 30 zile
-            """)
-        
-        # Buton pentru export
-        if st.button("📥 Exportă datele filtrate", key="export_neachitate"):
-            csv = filtered_neachitate.to_csv(index=False)
-            st.download_button(
-                label="Descarcă CSV",
-                data=csv,
-                file_name=f"facturi_neachitate_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                mime="text/csv",
-                key="download_neachitate"
-            )
-        
-        # Statistici pentru datele filtrate
-        if not filtered_neachitate.empty:
-            st.markdown("#### 📊 Statistici Filtrate")
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                total_filtrat = filtered_neachitate['Rest de Plata'].sum() if 'Rest de Plata' in filtered_neachitate.columns else 0
-                valuta = filtered_neachitate['Valuta'].iloc[0] if 'Valuta' in filtered_neachitate.columns and len(filtered_neachitate) > 0 else "RON"
-                st.metric("Total Neachitat", f"{total_filtrat:,.2f} {valuta}")
-            with col2:
-                suma_totala = filtered_neachitate['Suma'].sum() if 'Suma' in filtered_neachitate.columns else 0
-                st.metric("Suma Totală Facturi", f"{suma_totala:,.2f} {valuta}")
-            with col3:
-                valoare_medie_filtrat = filtered_neachitate['Rest de Plata'].mean() if 'Rest de Plata' in filtered_neachitate.columns else 0
-                st.metric("Rest Mediu", f"{valoare_medie_filtrat:,.2f} {valuta}")
-            with col4:
-                zile_medie = filtered_neachitate['Zile Intarziere'].mean() if 'Zile Intarziere' in filtered_neachitate.columns else 0
-                st.metric("Întârziere Medie", f"{zile_medie:.0f} zile")
-    
-    with tab2:
-        st.markdown("#### 📥 Facturi Neincasate")
-        
-        # Încărcare date
-        neincasate_df = load_neincasate()
-        
-        # Calculare metrici
-        total_neincasat = neincasate_df['Rest de Incasat'].sum() if 'Rest de Incasat' in neincasate_df.columns else 0
-        numar_facturi = len(neincasate_df)
-        clienti_unici = neincasate_df['Client'].nunique() if 'Client' in neincasate_df.columns else 0
-        
-        # Calculare facturi restante (cu întârziere)
-        facturi_restante = 0
-        if 'Zile Intarziere' in neincasate_df.columns:
-            facturi_restante = len(neincasate_df[neincasate_df['Zile Intarziere'] > 0])
-        
-        # Determinare valută principală
-        valuta_principala = "LEI"
-        if 'Valuta' in neincasate_df.columns and len(neincasate_df) > 0:
-            valuta_principala = neincasate_df['Valuta'].iloc[0]
-        
-        # Metrici principale
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("Total Neincasat", f"{total_neincasat:,.2f} {valuta_principala}", delta=None, delta_color="inverse")
-        with col2:
-            st.metric("Facturi Neincasate", f"{numar_facturi:,}")
-        with col3:
-            st.metric("Clienți", f"{clienti_unici}")
-        with col4:
-            st.metric("Facturi Restante", f"{facturi_restante}", delta=None, delta_color="inverse")
-        
-        st.markdown("---")
-        
-        # Filtrare date
-        col1, col2 = st.columns(2)
-        with col1:
-            if 'Client' in neincasate_df.columns:
-                client_filter = st.multiselect(
-                    "Filtrează după client:",
-                    options=sorted(neincasate_df['Client'].unique()),
-                    default=[],
-                    key="client_neincasate"
-                )
-        
-        with col2:
-            # Filtru pentru facturile restante
-            show_restante = st.checkbox("Afișează doar facturile restante", key="restante_neincasate")
-        
-        # Adaug filtrare după valută și agent
-        col3, col4 = st.columns(2)
-        with col3:
-            if 'Agent' in neincasate_df.columns:
-                agenti_disponibili = neincasate_df['Agent'].unique()
-                agent_filter = st.selectbox(
-                    "Filtrează după agent:",
-                    options=["Toți"] + list(agenti_disponibili),
-                    key="agent_neincasate"
-                )
-            else:
-                agent_filter = "Toți"
-        
-        with col4:
-            # Afișez totaluri pe valute
-            if 'Valuta' in neincasate_df.columns and 'Rest de Incasat' in neincasate_df.columns:
-                st.markdown("**💰 Totaluri pe valute:**")
-                for valuta in neincasate_df['Valuta'].unique():
-                    total_valuta = neincasate_df[neincasate_df['Valuta'] == valuta]['Rest de Incasat'].sum()
-                    st.write(f"• {valuta}: {total_valuta:,.2f}")
-        
-        # Aplicare filtre
-        filtered_neincasate = neincasate_df.copy()
-        
-        if 'Client' in neincasate_df.columns and client_filter:
-            filtered_neincasate = filtered_neincasate[filtered_neincasate['Client'].isin(client_filter)]
-        
-        if show_restante and 'Zile Intarziere' in neincasate_df.columns:
-            filtered_neincasate = filtered_neincasate[filtered_neincasate['Zile Intarziere'] > 0]
-        
-        if agent_filter != "Toți" and 'Agent' in neincasate_df.columns:
-            filtered_neincasate = filtered_neincasate[filtered_neincasate['Agent'] == agent_filter]
-        
-        # Sortare după data scadenței
-        if 'Data Scadenta' in filtered_neincasate.columns:
-            filtered_neincasate = filtered_neincasate.sort_values('Data Scadenta')
-        
-        # Afișare tabel
-        st.subheader(f"📋 Facturi Neincasate ({len(filtered_neincasate)} înregistrări)")
-        
-        # Selectez coloanele pentru afișare
-        columns_to_show = ['Client', 'Nr Factura', 'Serie', 'Data Factura', 'Data Scadenta', 
-                          'Valuta', 'Suma', 'Rest de Incasat', 'Zile Intarziere', 'Agent']
-        available_columns = [col for col in columns_to_show if col in filtered_neincasate.columns]
-        
-        # Formatez datele pentru afișare
-        display_df = filtered_neincasate[available_columns].copy()
-        
-        # Formatez valorile monetare și datele
-        if 'Suma' in display_df.columns:
-            display_df['Suma'] = display_df['Suma'].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "0")
-        if 'Rest de Incasat' in display_df.columns:
-            display_df['Rest de Incasat'] = display_df['Rest de Incasat'].apply(lambda x: f"{x:,.2f}" if pd.notna(x) else "0")
-        if 'Data Factura' in display_df.columns:
-            display_df['Data Factura'] = display_df['Data Factura'].dt.strftime('%d.%m.%Y')
-        if 'Data Scadenta' in display_df.columns:
-            display_df['Data Scadenta'] = display_df['Data Scadenta'].dt.strftime('%d.%m.%Y')
-        
-        # Stylez tabelul pentru a evidenția facturile restante
-        def highlight_restante(row):
-            try:
-                zile = float(row['Zile Intarziere']) if 'Zile Intarziere' in row and pd.notna(row['Zile Intarziere']) else 0
-                if zile > 30:
-                    return ['background-color: #ffebee'] * len(row)  # Roșu deschis pentru întârziere mare
-                elif zile > 0:
-                    return ['background-color: #fff3e0'] * len(row)  # Portocaliu deschis pentru întârziere mică
-                else:
-                    return [''] * len(row)
-            except:
-                return [''] * len(row)
-        
-        if 'Zile Intarziere' in display_df.columns:
-            styled_df = display_df.style.apply(highlight_restante, axis=1)
-            st.dataframe(styled_df, use_container_width=True)
-        else:
-            st.dataframe(display_df, use_container_width=True)
-        
-        # Legendă pentru culori
-        if 'Zile Intarziere' in filtered_neincasate.columns:
-            st.markdown("""
-            **Legendă culori:**
-            - 🟡 Galben: Întârziere 1-30 zile
-            - 🔴 Roșu: Întârziere peste 30 zile
-            """)
-        
-        # Buton pentru export
-        if st.button("📥 Exportă datele filtrate", key="export_neincasate"):
-            csv = filtered_neincasate.to_csv(index=False)
-            st.download_button(
-                label="Descarcă CSV",
-                data=csv,
-                file_name=f"facturi_neincasate_{pd.Timestamp.now().strftime('%Y%m%d_%H%M')}.csv",
-                mime="text/csv",
-                key="download_neincasate"
-            )
-        
-        # Statistici pentru datele filtrate
-        if not filtered_neincasate.empty:
-            st.markdown("#### 📊 Statistici Filtrate")
-            col1, col2, col3, col4 = st.columns(4)
-            
-            with col1:
-                total_filtrat = filtered_neincasate['Rest de Incasat'].sum() if 'Rest de Incasat' in filtered_neincasate.columns else 0
-                valuta = filtered_neincasate['Valuta'].iloc[0] if 'Valuta' in filtered_neincasate.columns and len(filtered_neincasate) > 0 else "RON"
-                st.metric("Total Neincasat", f"{total_filtrat:,.2f} {valuta}")
-            with col2:
-                suma_totala = filtered_neincasate['Suma'].sum() if 'Suma' in filtered_neincasate.columns else 0
-                st.metric("Suma Totală Facturi", f"{suma_totala:,.2f} {valuta}")
-            with col3:
-                valoare_medie_filtrat = filtered_neincasate['Rest de Incasat'].mean() if 'Rest de Incasat' in filtered_neincasate.columns else 0
-                st.metric("Rest Mediu", f"{valoare_medie_filtrat:,.2f} {valuta}")
-            with col4:
-                zile_medie = filtered_neincasate['Zile Intarziere'].mean() if 'Zile Intarziere' in filtered_neincasate.columns else 0
-                st.metric("Întârziere Medie", f"{zile_medie:.0f} zile")
