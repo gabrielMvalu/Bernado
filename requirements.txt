@@ -1,7 +1,5 @@
 streamlit
-pandas
+pandas  
+plotly
 openpyxl
-python-docx
-docx
-plotly==5.5.0
-duckdb
+numpy
