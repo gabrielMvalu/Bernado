@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# Funcții pentru încărcarea datelor
+# Funcții pentru încărcarea datelor - ORIGINALE
 @st.cache_data
 def load_vanzari_zi_clienti():
     """Încarcă datele din Excel - Situația zi și clienți"""
@@ -97,6 +97,7 @@ def load_cumparari_ciis():
             'Furnizor': ['Demo Furnizor']
         })
 
+# NOUL - Funcții pentru încărcarea datelor de facturi
 @st.cache_data
 def load_neachitate():
     """Încarcă datele din Excel - Facturi Neachitate"""
@@ -214,7 +215,7 @@ st.subheader("Dashboard pentru segmentul rezidențial")
 
 st.markdown("---")
 
-# Selectare categorie principală
+# Selectare categorie principală - ADĂUGAT DOAR "Plăți Facturi"
 st.subheader("📂 Selectează Categoria")
 category = st.selectbox(
     "Alege tipul de raport:",
@@ -223,7 +224,7 @@ category = st.selectbox(
 
 st.markdown("---")
 
-# ===== SITUAȚIE INTRĂRI IEȘIRI =====
+# ===== SITUAȚIE INTRĂRI IEȘIRI ===== [PĂSTRAT ORIGINAL]
 if category == "Situație Intrări Ieșiri":
     st.markdown("### 📊 Situație Intrări Ieșiri")
     
@@ -335,7 +336,7 @@ if category == "Situație Intrări Ieșiri":
         else:
             st.error("Nu s-au putut încărca datele produselor")
 
-# ===== BALANȚĂ STOCURI =====
+# ===== BALANȚĂ STOCURI ===== [PĂSTRAT ORIGINAL]
 elif category == "Balanță Stocuri":
     st.markdown("### 📦 Balanță Stocuri")
     
@@ -413,7 +414,7 @@ elif category == "Balanță Stocuri":
         st.markdown("---")
         st.dataframe(perioada_df, use_container_width=True)
 
-# ===== CUMPARARI INTRARI =====
+# ===== CUMPARARI INTRARI ===== [PĂSTRAT ORIGINAL]
 elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
     
@@ -539,12 +540,11 @@ elif category == "Cumparari Intrari":
                 pret_mediu = filtered_ciis['Pret'].mean() if 'Pret' in filtered_ciis.columns else 0
                 st.metric("Preț Mediu", f"{pret_mediu:,.2f} RON")
 
-# ===== PLĂȚI FACTURI =====
+# ===== PLĂȚI FACTURI ===== [NOU - ADĂUGAT]
 elif category == "Plăți Facturi":
     st.markdown("### 💳 Plăți Facturi")
     
     # Verificare existența fișierelor
-    import os
     st.markdown("#### 🔍 Status Fișiere:")
     col1, col2 = st.columns(2)
     
