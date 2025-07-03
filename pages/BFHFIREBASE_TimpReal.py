@@ -241,15 +241,16 @@ def render_charts(df):
         else:
             st.info("Date insuficiente pentru grafic")
 
+
 def render_data_tables(df):
-    """tabelele cu date"""
+    """Randează tabelele cu date"""
     if df.empty:
         return
     
     st.subheader("📋 Date Detaliate")
     
-    # Filtre
-    col1, col2, col3 = st.columns(3)
+    # Filtre - 4 coloane
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         if 'DenumireGestiune' in df.columns:
@@ -262,24 +263,53 @@ def render_data_tables(df):
             selected_agent = st.selectbox("Agent:", agenti)
     
     with col3:
+        if 'Data' in df.columns:
+            # Convertește la datetime dacă nu e deja
+            df['Data'] = pd.to_datetime(df['Data'])
+            # Obține datele unice și sortează
+            date_list = sorted(df['Data'].dt.date.unique())
+            date_options = ['Toate zilele'] + [str(date) for date in date_list]
+            selected_date = st.selectbox("Data:", date_options)
+    
+    with col4:
+        if 'Denumire' in df.columns:
+            # Limitează la primele 50 de produse pentru performanță
+            denumiri = ['Toate produsele'] + list(df['Denumire'].unique())[:50]
+            selected_denumire = st.selectbox("Produs:", denumiri)
+    
+    # Linie separată pentru numărul de înregistrări
+    col_records, col_empty = st.columns([1, 3])
+    with col_records:
         records_to_show = st.selectbox("Afișează:", [50, 100, 200, 500, 'Toate'])
     
     # Aplicare filtre
     filtered_df = df.copy()
     
+    # Filtru gestiune
     if 'DenumireGestiune' in df.columns and selected_gestiune != 'Toate':
         filtered_df = filtered_df[filtered_df['DenumireGestiune'] == selected_gestiune]
     
+    # Filtru agent
     if 'Agent' in df.columns and selected_agent != 'Toți':
         filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
     
+    # Filtru dată
+    if 'Data' in df.columns and selected_date != 'Toate zilele':
+        selected_date_obj = pd.to_datetime(selected_date).date()
+        filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
+    
+    # Filtru denumire produs
+    if 'Denumire' in df.columns and selected_denumire != 'Toate produsele':
+        filtered_df = filtered_df[filtered_df['Denumire'] == selected_denumire]
+    
+    # Limitare număr înregistrări
     if records_to_show != 'Toate':
         filtered_df = filtered_df.head(records_to_show)
     
     # Selectare coloane importante pentru afișare
     display_columns = [
         'Data', 'Client', 'Denumire', 'Cantitate', 'Valoare', 
-        'Adaos', 'Agent', 'DenumireGestiune'
+        'Adaos', 'Agent', 'DenumireGestiune', 'Cod', 'UM'
     ]
     
     # Afișează doar coloanele disponibile
@@ -299,7 +329,7 @@ def render_data_tables(df):
         # Statistici pentru datele filtrate
         if not filtered_df.empty:
             st.markdown("#### 📊 Statistici Date Filtrate")
-            col1, col2, col3 = st.columns(3)
+            col1, col2, col3, col4 = st.columns(4)
             
             with col1:
                 total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
@@ -310,10 +340,16 @@ def render_data_tables(df):
                 st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
             
             with col3:
+                total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
+                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+            
+            with col4:
                 nr_inregistrari = len(filtered_df)
                 st.metric("Înregistrări", f"{nr_inregistrari:,}")
     else:
         st.warning("Nu există coloane disponibile pentru afișare")
+
+
 
 def render_sidebar():
     """sidebar-ul cu controale"""
