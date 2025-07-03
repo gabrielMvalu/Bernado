@@ -306,7 +306,7 @@ if tip_analiza == "📊 Analize Vânzări":
                 
                 Identificare pattern-uri temporale pentru optimizarea programului de lucru și alocarea resurselor în perioadele de vârf.
                 """)
-        
+            
             # ===== ANALIZE PRODUSE REALE =====
             st.markdown("---")
             st.markdown("#### 🏆 Analize Top Produse - Date Reale")
@@ -421,9 +421,14 @@ if tip_analiza == "📊 Analize Vânzări":
                     
                     Oportunitate diversificare în celelalte {total_produse - 10} produse.
                     """)
-            
             else:
                 st.warning("Nu s-au putut încărca datele produselor. Verifică fișierul svtp.xlsx în folderul data/.")
+        
+        except Exception as e:
+            st.error(f"Eroare la procesarea datelor de vânzări: {e}")
+            st.info("Verifică formatul datelor în fișierele Excel.")
+    else:
+        st.warning("Nu s-au putut încărca datele de vânzări. Verifică fișierul svzc.xlsx în folderul data/.")
 
 # ===== ANALIZE STOCURI =====
 elif tip_analiza == "📦 Analize Stocuri":
@@ -495,6 +500,8 @@ elif tip_analiza == "📦 Analize Stocuri":
                 )
                 
                 st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.warning("Nu s-au putut încărca datele de stocuri. Verifică fișierele în folderul data/.")
 
 # ===== ANALIZE ACHIZIȚII =====
 elif tip_analiza == "🛒 Analize Achiziții":
@@ -570,6 +577,8 @@ elif tip_analiza == "🛒 Analize Achiziții":
                     )
                     
                     st.plotly_chart(fig_pie, use_container_width=True)
+    else:
+        st.warning("Nu s-au putut încărca datele de achiziții. Verifică fișierele în folderul data/.")
 
 # ===== ANALIZE COMPARATIVE =====
 elif tip_analiza == "🔀 Analize Comparative":
@@ -623,28 +632,23 @@ elif tip_analiza == "🔀 Analize Comparative":
     
     st.plotly_chart(fig_comp, use_container_width=True)
 
-# ===== FILTRE AVANSATE PENTRU DATE REALE =====
+# ===== FILTRE AVANSATE =====
 st.markdown("---")
 st.markdown("#### ⚙️ Filtre Avansate pentru Personalizarea Analizelor")
 
 filter_col1, filter_col2, filter_col3 = st.columns(3)
 
 with filter_col1:
-    # Filtre bazate pe perioada reală din date (1-30 mai 2025)
     date_start = st.date_input(
         "📅 Data început:",
-        value=datetime.date(2025, 5, 1),  # Adaptez la datele reale
-        min_value=datetime.date(2025, 5, 1),
-        max_value=datetime.date(2025, 5, 30),
+        value=datetime.date(2025, 5, 1),
         key="date_start_analysis"
     )
 
 with filter_col2:
     date_end = st.date_input(
         "📅 Data sfârșit:",
-        value=datetime.date(2025, 5, 30),  # Adaptez la datele reale
-        min_value=datetime.date(2025, 5, 1),
-        max_value=datetime.date(2025, 5, 30),
+        value=datetime.date(2025, 5, 30),
         key="date_end_analysis"
     )
 
@@ -673,14 +677,13 @@ with col2:
 
 with col3:
     if st.button("📈 Export Rezultate", type="secondary"):
-        st.info("📋 Funcționalitate export în dezvoltare. Rezultatele vor putea fi exportate în Excel/PDF.")
+        st.info("📋 Funcționalitatea de export va fi disponibilă în următoarea versiune.")
 
 # Footer informativ
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; font-size: 12px;'>
 💡 <strong>Brenado Analytics</strong> - Business Intelligence Platform<br>
-📊 Date reale • 🔄 Actualizare în timp real • 🎯 Insights actionabile<br>
-Perioada analizată: <strong>1-30 Mai 2025</strong> | Total: <strong>30 zile consecutive</strong>
+📊 Date reale • 🔄 Actualizare în timp real • 🎯 Insights actionabile
 </div>
 """, unsafe_allow_html=True)
