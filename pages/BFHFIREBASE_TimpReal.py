@@ -277,16 +277,12 @@ def render_data_tables(df):
             denumiri = ['Toate produsele'] + list(df['Denumire'].unique())[:50]
             selected_denumire = st.selectbox("Produs:", denumiri)
     
-    # Linie separată pentru numărul de înregistrări
-    col_records, col_empty = st.columns([1, 3])
-    with col_records:
-        records_to_show = st.selectbox("Afișează:", [50, 100, 200, 500, 'Toate'])
-    
     # Aplicare filtre
     filtered_df = df.copy()
     
     # Filtru gestiune
-    if 'DenumireGestiune' in df.columns and selected_gestiune != 'Toate':
+    if 'DenumireGest
+iune' in df.columns and selected_gestiune != 'Toate':
         filtered_df = filtered_df[filtered_df['DenumireGestiune'] == selected_gestiune]
     
     # Filtru agent
@@ -301,10 +297,6 @@ def render_data_tables(df):
     # Filtru denumire produs
     if 'Denumire' in df.columns and selected_denumire != 'Toate produsele':
         filtered_df = filtered_df[filtered_df['Denumire'] == selected_denumire]
-    
-    # Limitare număr înregistrări
-    if records_to_show != 'Toate':
-        filtered_df = filtered_df.head(records_to_show)
     
     # Selectare coloane importante pentru afișare
     display_columns = [
