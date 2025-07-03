@@ -333,6 +333,9 @@ if category == "Situație Intrări Ieșiri":
             st.error("Nu s-au putut încărca datele produselor")
 
 # ===== BALANȚĂ STOCURI ===== [ORIGINAL - plus adaugat selectie dupa gestiune]
+
+
+
 elif category == "Balanță Stocuri":
     st.markdown("### 📦 Balanță Stocuri")
     
@@ -372,7 +375,8 @@ elif category == "Balanță Stocuri":
                 gestiune_filter = st.multiselect(
                     "Filtrează după gestiune:",
                     options=balanta_df['DenumireGest'].unique(),
-                    default=[]
+                    default=[],
+                    key="gestiune_filter_tab1"
                 )
         
         with col2:
@@ -380,7 +384,8 @@ elif category == "Balanță Stocuri":
                 produs_filter = st.multiselect(
                     "Filtrează după produs:",
                     options=balanta_df['Denumire'].unique(),
-                    default=[]
+                    default=[],
+                    key="produs_filter_tab1"
                 )
         
         # Aplicare filtre
@@ -445,7 +450,8 @@ elif category == "Balanță Stocuri":
                 gestiune_filter = st.multiselect(
                     "Filtrează după gestiune:",
                     options=perioada_df['Denumire gestiune'].unique(),
-                    default=[]
+                    default=[],
+                    key="gestiune_filter_tab2"
                 )
         
         with col2:
@@ -453,7 +459,8 @@ elif category == "Balanță Stocuri":
                 produs_filter = st.multiselect(
                     "Filtrează după produs:",
                     options=perioada_df['Denumire'].unique(),
-                    default=[]
+                    default=[],
+                    key="produs_filter_tab2"
                 )
         
         # Aplicare filtre
@@ -484,7 +491,10 @@ elif category == "Balanță Stocuri":
             with col4:
                 vechime_filtrata = filtered_perioada['ZileVechime'].mean() if 'ZileVechime' in filtered_perioada.columns else 0
                 st.metric("Vechime Medie", f"{vechime_filtrata:.0f} zile")
-                
+
+
+
+
 # ===== CUMPARARI INTRARI ===== [ORIGINAL - NESCHIMBAT]
 elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
