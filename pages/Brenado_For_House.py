@@ -311,7 +311,7 @@ elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
     
     # Tabs pentru subcategoriile Cumparari Intrari
-    tab1, tab2 = st.tabs(["📋 CIPD", "📊 CIIS"])
+    tab1, tab2 = st.tabs(["📋 Cumpărări în Perioada Data", "📊 Cumpărări Intrări în Stoc"])
     
     with tab1:
         st.markdown("#### 📋 Cumparari Intrari - CIPD")
