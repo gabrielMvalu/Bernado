@@ -242,6 +242,9 @@ def render_charts(df):
             st.info("Date insuficiente pentru grafic")
 
 
+
+
+
 def render_data_tables(df):
     """Randează tabelele cu date"""
     if df.empty:
@@ -281,8 +284,7 @@ def render_data_tables(df):
     filtered_df = df.copy()
     
     # Filtru gestiune
-    if 'DenumireGest
-iune' in df.columns and selected_gestiune != 'Toate':
+    if 'DenumireGestiune' in df.columns and selected_gestiune != 'Toate':
         filtered_df = filtered_df[filtered_df['DenumireGestiune'] == selected_gestiune]
     
     # Filtru agent
@@ -340,8 +342,6 @@ iune' in df.columns and selected_gestiune != 'Toate':
                 st.metric("Înregistrări", f"{nr_inregistrari:,}")
     else:
         st.warning("Nu există coloane disponibile pentru afișare")
-
-
 
 def render_sidebar():
     """sidebar-ul cu controale"""
