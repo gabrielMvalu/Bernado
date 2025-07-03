@@ -311,10 +311,10 @@ elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
     
     # Tabs pentru subcategoriile Cumparari Intrari
-    tab1, tab2 = st.tabs(["📋 Cumpărări în Perioada Data", "📊 Cumpărări Intrări în Stoc"])
+    tab1, tab2 = st.tabs(["📋 Cumpărări Intrări Grupări pe Data", "📊 Cumpărări Intrări în Stoc"])
     
     with tab1:
-        st.markdown("#### 📋 Cumparari Intrari - CIPD")
+        st.markdown("#### 📋 Cumpărări Intrări Grupări pe Data")
         
         # Încărcare date
         cipd_df = load_cumparari_cipd()
@@ -341,7 +341,7 @@ elif category == "Cumparari Intrari":
         st.dataframe(cipd_df, use_container_width=True)
     
     with tab2:
-        st.markdown("#### 📊 Cumparari Intrari - CIIS")
+        st.markdown("#### 📊 Cumpărări Intrări în Stoc")
         
         # Încărcare date
         ciis_df = load_cumparari_ciis()
