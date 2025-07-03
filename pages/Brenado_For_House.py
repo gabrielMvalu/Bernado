@@ -232,14 +232,10 @@ if category == "Situație Intrări Ieșiri":
 elif category == "Balanță Stocuri":
     st.markdown("### 📦 Balanță Stocuri")
     
-    # Subcategorie pentru Balanță Stocuri
-    subcategory = st.selectbox(
-        "Selectează tipul de balanță:",
-        ["În Dată", "Perioadă"]
-    )
+    # Tabs pentru subcategoriile Balanță Stocuri
+    tab1, tab2 = st.tabs(["📅 În Dată", "📊 Perioadă"])
     
-    # ===== ÎN DATĂ =====
-    if subcategory == "În Dată":
+    with tab1:
         st.markdown("#### 📅 Balanță Stocuri la Dată")
         
         # Încărcare date
@@ -283,8 +279,7 @@ elif category == "Balanță Stocuri":
         # Tabel cu date
         st.dataframe(filtered_balanta, use_container_width=True)
     
-    # ===== PERIOADĂ =====
-    elif subcategory == "Perioadă":
+    with tab2:
         st.markdown("#### 📊 Balanță Stocuri pe Perioadă")
         
         # Încărcare date
@@ -315,14 +310,10 @@ elif category == "Balanță Stocuri":
 elif category == "Cumparari Intrari":
     st.markdown("### 🛒 Cumparari Intrari")
     
-    # Subcategorie pentru Cumparari Intrari
-    subcategory = st.selectbox(
-        "Selectează tipul de raport:",
-        ["CIPD", "CIIS"]
-    )
+    # Tabs pentru subcategoriile Cumparari Intrari
+    tab1, tab2 = st.tabs(["📋 CIPD", "📊 CIIS"])
     
-    # ===== CIPD =====
-    if subcategory == "CIPD":
+    with tab1:
         st.markdown("#### 📋 Cumparari Intrari - CIPD")
         
         # Încărcare date
@@ -349,8 +340,7 @@ elif category == "Cumparari Intrari":
         st.markdown("---")
         st.dataframe(cipd_df, use_container_width=True)
     
-    # ===== CIIS =====
-    elif subcategory == "CIIS":
+    with tab2:
         st.markdown("#### 📊 Cumparari Intrari - CIIS")
         
         # Încărcare date
