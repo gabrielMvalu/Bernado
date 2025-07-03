@@ -1,8 +1,6 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Brenado For House - Dashboard Firebase în Timp Real
-Autor: Pentru ERP B-org
+Autor: Castemill SRL
 Data: Iulie 2025
 """
 
@@ -135,8 +133,8 @@ def get_last_sync_info():
 # ===== FUNCȚII DASHBOARD =====
 
 def render_header():
-    """Randează header-ul aplicației"""
-    st.title("🏠 Brenado For House - Dashboard în Timp Real")
+    """Randare header-ul aplicației"""
+    st.title("Brenado For House - Dashboard în Timp Real")
     st.markdown("*Conectat direct la Firebase pentru date live din ERP B-org*")
     st.markdown("---")
 
@@ -153,14 +151,14 @@ def render_connection_status():
         with col1:
             st.success(f"🟢 Conectat la Firebase")
         with col2:
-            st.info(f"📊 Ultima sync: {upload_date}")
+            st.info(f"📊 Ultima actualizare: {upload_date}")
         with col3:
             st.info(f"📈 {records_count} înregistrări")
     else:
         st.warning("🟡 Nu s-au găsit informații de sincronizare")
 
 def render_main_metrics(df, summary):
-    """Randează metricile principale"""
+    """metricile principale"""
     if df.empty:
         st.warning("⚠️ Nu sunt date disponibile în Firebase")
         return
@@ -198,7 +196,7 @@ def render_main_metrics(df, summary):
         )
 
 def render_charts(df):
-    """Randează graficele"""
+    """graficele"""
     if df.empty:
         return
     
@@ -244,7 +242,7 @@ def render_charts(df):
             st.info("Date insuficiente pentru grafic")
 
 def render_data_tables(df):
-    """Randează tabelele cu date"""
+    """tabelele cu date"""
     if df.empty:
         return
     
@@ -318,7 +316,7 @@ def render_data_tables(df):
         st.warning("Nu există coloane disponibile pentru afișare")
 
 def render_sidebar():
-    """Randează sidebar-ul cu controale"""
+    """sidebar-ul cu controale"""
     with st.sidebar:
         st.header("🔧 Controale Dashboard")
         
