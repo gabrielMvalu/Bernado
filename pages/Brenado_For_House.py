@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import os
 
 # Configurare pagină
 st.set_page_config(
@@ -100,7 +101,20 @@ def load_cumparari_ciis():
 def load_neachitate():
     """Încarcă datele din Excel - Facturi Neachitate"""
     try:
-        df = pd.read_excel("Neachitate.xlsx")
+        # Încerc mai multe căi posibile pentru fișier
+        possible_paths = ["Neachitate.xlsx", "data/Neachitate.xlsx", "./Neachitate.xlsx"]
+        df = None
+        
+        for path in possible_paths:
+            try:
+                df = pd.read_excel(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if df is None:
+            raise FileNotFoundError("Nu s-a găsit fișierul Neachitate.xlsx în nicio locație")
+        
         # Filtrez doar facturile reale (nu totalurile)
         df = df[df['Furnizor'].notna() & ~df['Furnizor'].str.contains('Total  ', na=False) & df['Numar'].notna()]
         
@@ -130,14 +144,30 @@ def load_neachitate():
             'Data Scadenta': ['2024-01-31', '2024-02-01'],
             'Suma': [5000, 3000],
             'Rest de Plata': [5000, 1500],
-            'Zile Intarziere': [5, 0]
+            'Zile Intarziere': [5, 0],
+            'Valuta': ['EUR', 'EUR'],
+            'Serie': ['Demo1', 'Demo2'],
+            'PL': ['PL 01', 'PL 02']
         })
 
 @st.cache_data
 def load_neincasate():
     """Încarcă datele din Excel - Facturi Neincasate"""
     try:
-        df = pd.read_excel("Neincasate.xlsx")
+        # Încerc mai multe căi posibile pentru fișier
+        possible_paths = ["Neincasate.xlsx", "data/Neincasate.xlsx", "./Neincasate.xlsx"]
+        df = None
+        
+        for path in possible_paths:
+            try:
+                df = pd.read_excel(path)
+                break
+            except FileNotFoundError:
+                continue
+        
+        if df is None:
+            raise FileNotFoundError("Nu s-a găsit fișierul Neincasate.xlsx în nicio locație")
+        
         # Filtrez doar facturile reale (nu totalurile)
         df = df[df['Client'].notna() & ~df['Client'].str.contains('Total  ', na=False) & df['NumarDoc'].notna()]
         
@@ -167,7 +197,10 @@ def load_neincasate():
             'Data Scadenta': ['2024-01-31', '2024-02-01'],
             'Suma': [8000, 6000],
             'Rest de Incasat': [8000, 3000],
-            'Zile Intarziere': [10, 0]
+            'Zile Intarziere': [10, 0],
+            'Valuta': ['LEI', 'LEI'],
+            'Serie': ['Demo1', 'Demo2'],
+            'Agent': ['Agent Demo', 'Agent Demo']
         })
 
 # Sidebar
@@ -510,6 +543,37 @@ elif category == "Cumparari Intrari":
 elif category == "Plăți Facturi":
     st.markdown("### 💳 Plăți Facturi")
     
+    # Verificare existența fișierelor
+    import os
+    st.markdown("#### 🔍 Status Fișiere:")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        possible_paths_neachitate = ["Neachitate.xlsx", "data/Neachitate.xlsx", "./Neachitate.xlsx"]
+        neachitate_found = False
+        for path in possible_paths_neachitate:
+            if os.path.exists(path):
+                st.success(f"✅ Găsit Neachitate.xlsx la: {path}")
+                neachitate_found = True
+                break
+        if not neachitate_found:
+            st.error("❌ Nu s-a găsit Neachitate.xlsx")
+            st.info("📁 Directorul curent: " + os.getcwd())
+            st.info("📂 Fișiere în directorul curent: " + str(os.listdir(".")))
+    
+    with col2:
+        possible_paths_neincasate = ["Neincasate.xlsx", "data/Neincasate.xlsx", "./Neincasate.xlsx"]
+        neincasate_found = False
+        for path in possible_paths_neincasate:
+            if os.path.exists(path):
+                st.success(f"✅ Găsit Neincasate.xlsx la: {path}")
+                neincasate_found = True
+                break
+        if not neincasate_found:
+            st.error("❌ Nu s-a găsit Neincasate.xlsx")
+    
+    st.markdown("---")
+    
     # Tabs pentru subcategoriile Plăți Facturi
     tab1, tab2 = st.tabs(["❌ Neachitate", "📥 Neincasate"])
     
@@ -573,6 +637,8 @@ elif category == "Plăți Facturi":
                     options=["Toate"] + list(valute_disponibile),
                     key="valuta_neachitate"
                 )
+            else:
+                valuta_filter = "Toate"
         
         with col4:
             # Afișez totaluri pe valute
@@ -736,6 +802,8 @@ elif category == "Plăți Facturi":
                     options=["Toți"] + list(agenti_disponibili),
                     key="agent_neincasate"
                 )
+            else:
+                agent_filter = "Toți"
         
         with col4:
             # Afișez totaluri pe valute
