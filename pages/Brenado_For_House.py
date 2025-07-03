@@ -198,14 +198,14 @@ st.markdown("---")
 st.subheader("📂 Selectează Categoria")
 category = st.selectbox(
     "Alege tipul de raport:",
-    ["Situație Intrări Ieșiri", "Balanță Stocuri", "Cumparari Intrari", "Plăți Facturi"]
+    ["Vânzăari", "Balanță Stocuri", "Cumparari Intrari", "Plăți Facturi"]
 )
 
 st.markdown("---")
 
-# ===== SITUAȚIE INTRĂRI IEȘIRI ===== [ORIGINAL - NESCHIMBAT]
-if category == "Situație Intrări Ieșiri":
-    st.markdown("### 📊 Situație Intrări Ieșiri")
+# ===== Vânzăari ===== [ORIGINAL - NESCHIMBAT]
+if category == "Vânzăari":
+    st.markdown("### 📊 Vânzăari")
     
     # Încărcare date
     vanzari_df = load_vanzari_zi_clienti()
