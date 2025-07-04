@@ -118,7 +118,7 @@ st.markdown("""
 # Funcții pentru încărcarea datelor (păstrate identice)
 @st.cache_data
 def load_vanzari_zi_clienti():
-    """Încarcă datele din Excel - Situația zi și clienți"""
+    """Încarcă datele din Excel - Vânzări"""
     try:
         df = pd.read_excel("data/svzc.xlsx")
         # Conversie dată din format Excel numeric
