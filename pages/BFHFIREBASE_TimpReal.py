@@ -346,10 +346,7 @@ def render_data_tables(df):
 def render_sidebar():
     """sidebar-ul cu controale"""
     with st.sidebar:
-        st.header("🔧 Controale Dashboard")
-        
 
-        
         # Informații sistem
         st.subheader("ℹ️ Informații Sistem")
         st.info(f"🕒 Ultimul refresh: {datetime.now().strftime('%H:%M:%S')}")
