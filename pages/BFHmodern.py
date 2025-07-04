@@ -294,8 +294,8 @@ st.markdown("""
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("📊 Situație Intrări Ieșiri", use_container_width=True, key="btn1"):
-        st.session_state.category = "Situație Intrări Ieșiri"
+    if st.button("📊 Vânzări", use_container_width=True, key="btn1"):
+        st.session_state.category = "Vânzări"
 with col2:
     if st.button("📦 Balanță Stocuri", use_container_width=True, key="btn2"):
         st.session_state.category = "Balanță Stocuri"
@@ -305,15 +305,15 @@ with col3:
 
 # Initialize session state
 if 'category' not in st.session_state:
-    st.session_state.category = "Situație Intrări Ieșiri"
+    st.session_state.category = "Vânzări"
 
 category = st.session_state.category
 
 st.markdown("---")
 
-# ===== SITUAȚIE INTRĂRI IEȘIRI =====
-if category == "Situație Intrări Ieșiri":
-    st.markdown("## 📊 Situație Intrări Ieșiri")
+# ===== Vânzări =====
+if category == "Vânzări":
+    st.markdown("## 📊 Vânzări")
     
     # Încărcare date
     vanzari_df = load_vanzari_zi_clienti()
