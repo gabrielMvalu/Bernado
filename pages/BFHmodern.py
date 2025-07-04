@@ -166,8 +166,8 @@ def load_vanzari_zi_clienti():
         if db is None:
             return pd.DataFrame()
         
-        # Încarcă toate documentele din colecția 'vanzari' sau 'transactions'
-        docs = db.collection('vanzari').stream()  # Ajustează numele colecției
+        # Încarcă toate documentele din colecția 'vanzari_current_month'
+        docs = db.collection('vanzari_current_month').stream()
         
         data = []
         for doc in docs:
@@ -213,7 +213,7 @@ def load_top_produse():
         if db is None:
             return pd.DataFrame()
         
-        docs = db.collection('vanzari').stream()
+        docs = db.collection('vanzari_current_month').stream()
         
         produse_dict = {}
         
@@ -256,7 +256,7 @@ def load_balanta_la_data():
         data = []
         if not any(docs):  # Dacă nu există colecție separată pentru stocuri
             # Generează din vânzări
-            vanzari_docs = db.collection('vanzari').stream()
+            vanzari_docs = db.collection('vanzari_current_month').stream()
             stocuri_dict = {}
             
             for doc in vanzari_docs:
@@ -308,7 +308,7 @@ def load_balanta_perioada():
         
         data = []
         if not any(docs):  # Generează din datele de vânzări
-            vanzari_docs = db.collection('vanzari').stream()
+            vanzari_docs = db.collection('vanzari_current_month').stream()
             
             for doc in vanzari_docs:
                 doc_data = doc.to_dict()
@@ -391,7 +391,7 @@ def load_cumparari_ciis():
         if db is None:
             return pd.DataFrame()
         
-        docs = db.collection('vanzari').stream()  # Folosim vânzările pentru a genera date de cumpărări
+        docs = db.collection('vanzari_current_month').stream()  # Folosim vânzările pentru a genera date de cumpărări
         
         data = []
         for doc in docs:
