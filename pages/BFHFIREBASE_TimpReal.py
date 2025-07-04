@@ -157,7 +157,7 @@ def render_connection_status():
     else:
         st.warning("🟡 Nu s-au găsit informații de sincronizare")
 
-def render_main_metrics(df, summary):
+def render_main_metrics(df, summary=None):
     """metricile principale"""
     if df.empty:
         st.warning("⚠️ Nu sunt date disponibile în Firebase")
@@ -168,32 +168,22 @@ def render_main_metrics(df, summary):
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        total_vanzari = summary.get('total_vanzari', df['Valoare'].sum() if 'Valoare' in df.columns else 0)
-        st.metric(
-            "💰 Vânzări Totale", 
-            f"{total_vanzari:,.0f} RON"
-        )
+        total_vanzari = df['Valoare'].sum() if 'Valoare' in df.columns else 0
+        st.metric("💰 Vânzări Totale", f"{total_vanzari:,.0f} RON")
     
     with col2:
-        clienti_unici = summary.get('clienti_unici', df['Client'].nunique() if 'Client' in df.columns else 0)
-        st.metric(
-            "👥 Clienți Unici", 
-            f"{clienti_unici}"
-        )
+        clienti_unici = df['Client'].nunique() if 'Client' in df.columns else 0
+        st.metric("👥 Clienți Unici", f"{clienti_unici}")
     
     with col3:
-        total_records = summary.get('total_records', len(df))
-        st.metric(
-            "📋 Tranzacții", 
-            f"{total_records:,}"
-        )
+        total_records = len(df)
+        st.metric("📋 Tranzacții", f"{total_records:,}")
     
     with col4:
-        gestiuni = summary.get('gestiuni_unice', df['DenumireGestiune'].nunique() if 'DenumireGestiune' in df.columns else 0)
-        st.metric(
-            "🏢 Gestiuni", 
-            f"{gestiuni}"
-        )
+        gestiuni = df['DenumireGestiune'].nunique() if 'DenumireGestiune' in df.columns else 0
+        st.metric("🏢 Gestiuni", f"{gestiuni}")
+
+
 
 def render_charts(df):
     """graficele"""
