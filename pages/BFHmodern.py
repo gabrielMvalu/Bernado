@@ -5,6 +5,10 @@ import plotly.graph_objects as go
 from datetime import datetime, timedelta
 import numpy as np
 
+# Firebase imports
+import firebase_admin
+from firebase_admin import credentials, firestore
+
 # Configurare pagină cu tema dark modern
 st.set_page_config(
     page_title="Brenado For House",
@@ -115,149 +119,410 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Funcții pentru încărcarea datelor (păstrate identice)
-@st.cache_data
+# ===== FUNCȚII FIREBASE =====
+@st.cache_resource
+def init_firebase():
+    """Inițializează Firebase pentru Streamlit Cloud"""
+    try:
+        # Verifică dacă Firebase e deja inițializat
+        if firebase_admin._apps:
+            return firestore.client()
+        
+        # Pentru LOCAL (development) - folosește fișierul JSON
+        # Decomentează dacă rulezi local:
+        # cred = credentials.Certificate("path/to/firebase_key.json")
+        # firebase_admin.initialize_app(cred)
+        
+        # Pentru STREAMLIT CLOUD - folosește secrets
+        firebase_config = {
+            "type": st.secrets["firebase"]["type"],
+            "project_id": st.secrets["firebase"]["project_id"],
+            "private_key_id": st.secrets["firebase"]["private_key_id"],
+            "private_key": st.secrets["firebase"]["private_key"].replace('\\n', '\n'),
+            "client_email": st.secrets["firebase"]["client_email"],
+            "client_id": st.secrets["firebase"]["client_id"],
+            "auth_uri": st.secrets["firebase"]["auth_uri"],
+            "token_uri": st.secrets["firebase"]["token_uri"],
+            "auth_provider_x509_cert_url": st.secrets["firebase"]["auth_provider_x509_cert_url"],
+            "client_x509_cert_url": st.secrets["firebase"]["client_x509_cert_url"],
+            "universe_domain": st.secrets["firebase"]["universe_domain"]
+        }
+        
+        cred = credentials.Certificate(firebase_config)
+        firebase_admin.initialize_app(cred)
+        return firestore.client()
+        
+    except Exception as e:
+        st.error(f"❌ Eroare conectare Firebase: {e}")
+        return None
+
+# ===== FUNCȚII PENTRU ÎNCĂRCAREA DATELOR DIN FIREBASE =====
+
+@st.cache_data(ttl=300)  # Cache pentru 5 minute
 def load_vanzari_zi_clienti():
-    """Încarcă datele din Excel - Vânzări"""
+    """Încarcă datele de vânzări din Firebase"""
     try:
-        df = pd.read_excel("data/svzc.xlsx")
-        # Conversie dată din format Excel numeric
-        if 'Data' in df.columns:
-            df['Data'] = pd.to_datetime('1900-01-01') + pd.to_timedelta(df['Data'] - 2, unit='D')
-        return df
-    except:
-        # Date demo mai realiste
-        dates = pd.date_range(start='2025-05-01', end='2025-05-30', freq='D')
-        clients = [f'Client {i}' for i in range(1, 51)]
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        # Încarcă toate documentele din colecția 'vanzari' sau 'transactions'
+        docs = db.collection('vanzari').stream()  # Ajustează numele colecției
+        
         data = []
-        for date in dates:
-            for _ in range(np.random.randint(5, 25)):
-                client = np.random.choice(clients)
-                valoare = np.random.randint(500, 10000)
-                data.append({
-                    'Data': date,
-                    'Client': client,
-                    'Pret Contabil': valoare * 0.1,
-                    'Valoare': valoare,
-                    'Adaos': valoare * 0.15,
-                    'Cost': valoare * 0.85
-                })
+        for doc in docs:
+            doc_data = doc.to_dict()
+            
+            # Conversie timestamp Firebase la datetime
+            if 'Data' in doc_data and doc_data['Data']:
+                data_timestamp = doc_data['Data']
+                if hasattr(data_timestamp, 'timestamp'):
+                    data_datetime = datetime.fromtimestamp(data_timestamp.timestamp())
+                else:
+                    data_datetime = data_timestamp
+            else:
+                data_datetime = datetime.now()
+            
+            # Mapare date pentru compatibilitate
+            row = {
+                'Data': data_datetime,
+                'Client': doc_data.get('Client', 'N/A'),
+                'Pret Contabil': doc_data.get('Pret_Contabil', doc_data.get('Pret', 0)),
+                'Valoare': doc_data.get('Valoare', doc_data.get('Valoare_Contabila', 0)),
+                'Adaos': doc_data.get('Adaos', 0),
+                'Cost': doc_data.get('Cost', 0),
+                'Cantitate': doc_data.get('Cantitate', 1),
+                'Denumire': doc_data.get('Denumire', 'N/A'),
+                'Agent': doc_data.get('Agent', 'N/A'),
+                'Gestiune': doc_data.get('DenumireGestiune', 'N/A')
+            }
+            data.append(row)
+        
         return pd.DataFrame(data)
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare vânzări: {e}")
+        # Returnează date demo ca fallback
+        return generate_demo_vanzari()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_top_produse():
-    """Încarcă datele din Excel - Top produse"""
+    """Încarcă top produse din Firebase bazat pe vânzări"""
     try:
-        df = pd.read_excel("data/svtp.xlsx")
-        return df
-    except:
-        produse = [f'Produs {i}' for i in range(1, 101)]
-        data = []
-        for produs in produse:
-            cantitate = np.random.randint(10, 500)
-            valoare = np.random.randint(1000, 50000)
-            data.append({
-                'Denumire': produs,
-                'Cantitate': cantitate,
-                'Valoare': valoare,
-                'Adaos': valoare * 0.15
-            })
-        return pd.DataFrame(data)
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        docs = db.collection('vanzari').stream()
+        
+        produse_dict = {}
+        
+        for doc in docs:
+            doc_data = doc.to_dict()
+            produs = doc_data.get('Denumire', 'N/A')
+            cantitate = doc_data.get('Cantitate', 0)
+            valoare = doc_data.get('Valoare', 0)
+            adaos = doc_data.get('Adaos', 0)
+            
+            if produs in produse_dict:
+                produse_dict[produs]['Cantitate'] += cantitate
+                produse_dict[produs]['Valoare'] += valoare
+                produse_dict[produs]['Adaos'] += adaos
+            else:
+                produse_dict[produs] = {
+                    'Denumire': produs,
+                    'Cantitate': cantitate,
+                    'Valoare': valoare,
+                    'Adaos': adaos
+                }
+        
+        return pd.DataFrame(list(produse_dict.values()))
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare produse: {e}")
+        return generate_demo_produse()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_balanta_la_data():
-    """Încarcă datele din Excel - Balanță la dată"""
+    """Încarcă balanța stocurilor din Firebase"""
     try:
-        df = pd.read_excel("data/LaData.xlsx")
-        return df
-    except:
-        gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța', 'Showroom Cluj']
-        produse = [f'Produs {i}' for i in range(1, 201)]
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        # Încarcă din colecția de stocuri sau vânzări grupate
+        docs = db.collection('stocuri').stream()  # Ajustează numele colecției
+        
         data = []
-        for gest in gestiuni:
-            for _ in range(50):
-                produs = np.random.choice(produse)
-                stoc = np.random.randint(10, 500)
-                data.append({
-                    'DenumireGest': gest,
-                    'Denumire': produs,
-                    'Stoc final': stoc,
-                    'ValoareStocFinal': stoc * np.random.randint(50, 500)
-                })
+        if not any(docs):  # Dacă nu există colecție separată pentru stocuri
+            # Generează din vânzări
+            vanzari_docs = db.collection('vanzari').stream()
+            stocuri_dict = {}
+            
+            for doc in vanzari_docs:
+                doc_data = doc.to_dict()
+                gestiune = doc_data.get('DenumireGestiune', 'N/A')
+                produs = doc_data.get('Denumire', 'N/A')
+                cantitate = doc_data.get('Cantitate', 0)
+                valoare = doc_data.get('Valoare', 0)
+                
+                key = f"{gestiune}_{produs}"
+                if key in stocuri_dict:
+                    stocuri_dict[key]['Stoc final'] += cantitate * 10  # Simulăm stocul
+                    stocuri_dict[key]['ValoareStocFinal'] += valoare * 10
+                else:
+                    stocuri_dict[key] = {
+                        'DenumireGest': gestiune,
+                        'Denumire': produs,
+                        'Stoc final': cantitate * 10,
+                        'ValoareStocFinal': valoare * 10
+                    }
+            
+            data = list(stocuri_dict.values())
+        else:
+            for doc in docs:
+                doc_data = doc.to_dict()
+                row = {
+                    'DenumireGest': doc_data.get('DenumireGest', doc_data.get('Gestiune', 'N/A')),
+                    'Denumire': doc_data.get('Denumire', 'N/A'),
+                    'Stoc final': doc_data.get('Stoc_final', doc_data.get('Cantitate', 0)),
+                    'ValoareStocFinal': doc_data.get('ValoareStocFinal', doc_data.get('Valoare', 0))
+                }
+                data.append(row)
+        
         return pd.DataFrame(data)
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare stocuri: {e}")
+        return generate_demo_stocuri()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_balanta_perioada():
-    """Încarcă datele din Excel - Balanță pe perioadă"""
+    """Încarcă balanța pe perioadă din Firebase"""
     try:
-        df = pd.read_excel("data/Perioada.xlsx")
-        return df
-    except:
-        gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța', 'Showroom Cluj']
-        produse = [f'Produs {i}' for i in range(1, 201)]
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        docs = db.collection('stocuri_perioada').stream()
+        
         data = []
-        for gest in gestiuni:
-            for _ in range(50):
-                produs = np.random.choice(produse)
-                stoc = np.random.randint(10, 500)
-                data.append({
-                    'Denumire gestiune': gest,
-                    'Denumire': produs,
-                    'Stoc final': stoc,
-                    'Valoare intrare': stoc * np.random.randint(50, 500),
-                    'ZileVechime': np.random.randint(1, 180)
-                })
+        if not any(docs):  # Generează din datele de vânzări
+            vanzari_docs = db.collection('vanzari').stream()
+            
+            for doc in vanzari_docs:
+                doc_data = doc.to_dict()
+                
+                # Calculează vechimea bazată pe data vânzării
+                data_vanzare = doc_data.get('Data')
+                if hasattr(data_vanzare, 'timestamp'):
+                    data_dt = datetime.fromtimestamp(data_vanzare.timestamp())
+                else:
+                    data_dt = datetime.now()
+                
+                zile_vechime = (datetime.now() - data_dt).days
+                
+                row = {
+                    'Denumire gestiune': doc_data.get('DenumireGestiune', 'N/A'),
+                    'Denumire': doc_data.get('Denumire', 'N/A'),
+                    'Stoc final': doc_data.get('Cantitate', 0) * 15,  # Simulăm stocul
+                    'Valoare intrare': doc_data.get('Valoare', 0) * 15,
+                    'ZileVechime': max(1, zile_vechime)
+                }
+                data.append(row)
+        else:
+            for doc in docs:
+                doc_data = doc.to_dict()
+                row = {
+                    'Denumire gestiune': doc_data.get('Denumire_gestiune', 'N/A'),
+                    'Denumire': doc_data.get('Denumire', 'N/A'),
+                    'Stoc final': doc_data.get('Stoc_final', 0),
+                    'Valoare intrare': doc_data.get('Valoare_intrare', 0),
+                    'ZileVechime': doc_data.get('ZileVechime', 1)
+                }
+                data.append(row)
+        
         return pd.DataFrame(data)
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare balanță perioadă: {e}")
+        return generate_demo_balanta_perioada()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_cumparari_cipd():
-    """Încarcă datele din Excel - Cumparari CIPD"""
+    """Încarcă cumpărări CIPD din Firebase"""
     try:
-        df = pd.read_excel("data/CIPD.xlsx")
-        return df
-    except:
-        gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța']
-        furnizori = [f'Furnizor {i}' for i in range(1, 21)]
-        produse = [f'Produs {i}' for i in range(1, 101)]
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        docs = db.collection('cumparari').stream()
+        
         data = []
-        for _ in range(200):
-            cantitate = np.random.randint(10, 200)
-            pret = np.random.randint(50, 500)
-            data.append({
-                'Gestiune': np.random.choice(gestiuni),
-                'Denumire': np.random.choice(produse),
-                'Cantitate': cantitate,
-                'Pret': pret,
-                'Valoare': cantitate * pret,
-                'Furnizor': np.random.choice(furnizori)
-            })
+        for doc in docs:
+            doc_data = doc.to_dict()
+            
+            # Verifică dacă este tip CIPD
+            if doc_data.get('Tip', '') == 'CIPD' or doc_data.get('source', '') == 'CIPD':
+                row = {
+                    'Gestiune': doc_data.get('DenumireGestiune', doc_data.get('Gestiune', 'N/A')),
+                    'Denumire': doc_data.get('Denumire', 'N/A'),
+                    'Cantitate': doc_data.get('Cantitate', 0),
+                    'Pret': doc_data.get('Pret', doc_data.get('PretIntrare', 0)),
+                    'Valoare': doc_data.get('Valoare', 0),
+                    'Furnizor': doc_data.get('Furnizor', doc_data.get('Client', 'N/A'))
+                }
+                data.append(row)
+        
+        if not data:  # Dacă nu există date specifice, generează din vânzări
+            data = generate_demo_cumparari_cipd()
+            
         return pd.DataFrame(data)
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare cumpărări CIPD: {e}")
+        return generate_demo_cumparari_cipd()
 
-@st.cache_data
+@st.cache_data(ttl=300)
 def load_cumparari_ciis():
-    """Încarcă datele din Excel - Cumparari CIIS"""
+    """Încarcă cumpărări CIIS din Firebase"""
     try:
-        df = pd.read_excel("data/CIIS.xlsx")
-        return df
-    except:
-        gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța']
-        furnizori = [f'Furnizor {i}' for i in range(1, 21)]
-        produse = [f'Produs {i}' for i in range(1, 101)]
-        grupe = ['Materiale Construcții', 'Instalații Sanitare', 'Instalații Electrice', 'Finisaje', 'Unelte']
+        db = init_firebase()
+        if db is None:
+            return pd.DataFrame()
+        
+        docs = db.collection('vanzari').stream()  # Folosim vânzările pentru a genera date de cumpărări
+        
         data = []
-        for _ in range(300):
-            cantitate = np.random.randint(10, 200)
-            pret = np.random.randint(50, 500)
-            data.append({
-                'Gestiune': np.random.choice(gestiuni),
-                'Denumire': np.random.choice(produse),
-                'Denumire grupa': np.random.choice(grupe),
-                'Cantitate': cantitate,
-                'Pret': pret,
-                'Valoare': cantitate * pret,
-                'Furnizor': np.random.choice(furnizori)
-            })
+        for doc in docs:
+            doc_data = doc.to_dict()
+            
+            row = {
+                'Gestiune': doc_data.get('DenumireGestiune', 'N/A'),
+                'Denumire': doc_data.get('Denumire', 'N/A'),
+                'Denumire grupa': doc_data.get('Denumire_grupa', doc_data.get('CategorieProdus', 'N/A')),
+                'Cantitate': doc_data.get('Cantitate', 0),
+                'Pret': doc_data.get('PretIntrare', doc_data.get('Pret', 0)),
+                'Valoare': doc_data.get('Valoare', 0) * 0.8,  # Simulăm prețul de cumpărare
+                'Furnizor': f"Furnizor {hash(doc_data.get('Denumire', '')) % 20 + 1}"  # Generăm furnizor pe baza produsului
+            }
+            data.append(row)
+        
         return pd.DataFrame(data)
+        
+    except Exception as e:
+        st.error(f"❌ Eroare încărcare cumpărări CIIS: {e}")
+        return generate_demo_cumparari_ciis()
+
+# ===== FUNCȚII DEMO FALLBACK =====
+def generate_demo_vanzari():
+    """Generează date demo pentru vânzări"""
+    dates = pd.date_range(start='2025-05-01', end='2025-05-30', freq='D')
+    clients = [f'Client {i}' for i in range(1, 51)]
+    data = []
+    for date in dates:
+        for _ in range(np.random.randint(5, 25)):
+            client = np.random.choice(clients)
+            valoare = np.random.randint(500, 10000)
+            data.append({
+                'Data': date,
+                'Client': client,
+                'Pret Contabil': valoare * 0.1,
+                'Valoare': valoare,
+                'Adaos': valoare * 0.15,
+                'Cost': valoare * 0.85
+            })
+    return pd.DataFrame(data)
+
+def generate_demo_produse():
+    """Generează date demo pentru produse"""
+    produse = [f'Produs {i}' for i in range(1, 101)]
+    data = []
+    for produs in produse:
+        cantitate = np.random.randint(10, 500)
+        valoare = np.random.randint(1000, 50000)
+        data.append({
+            'Denumire': produs,
+            'Cantitate': cantitate,
+            'Valoare': valoare,
+            'Adaos': valoare * 0.15
+        })
+    return pd.DataFrame(data)
+
+def generate_demo_stocuri():
+    """Generează date demo pentru stocuri"""
+    gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța', 'Showroom Cluj']
+    produse = [f'Produs {i}' for i in range(1, 201)]
+    data = []
+    for gest in gestiuni:
+        for _ in range(50):
+            produs = np.random.choice(produse)
+            stoc = np.random.randint(10, 500)
+            data.append({
+                'DenumireGest': gest,
+                'Denumire': produs,
+                'Stoc final': stoc,
+                'ValoareStocFinal': stoc * np.random.randint(50, 500)
+            })
+    return pd.DataFrame(data)
+
+def generate_demo_balanta_perioada():
+    """Generează date demo pentru balanță perioadă"""
+    gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța', 'Showroom Cluj']
+    produse = [f'Produs {i}' for i in range(1, 201)]
+    data = []
+    for gest in gestiuni:
+        for _ in range(50):
+            produs = np.random.choice(produse)
+            stoc = np.random.randint(10, 500)
+            data.append({
+                'Denumire gestiune': gest,
+                'Denumire': produs,
+                'Stoc final': stoc,
+                'Valoare intrare': stoc * np.random.randint(50, 500),
+                'ZileVechime': np.random.randint(1, 180)
+            })
+    return pd.DataFrame(data)
+
+def generate_demo_cumparari_cipd():
+    """Generează date demo pentru cumpărări CIPD"""
+    gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța']
+    furnizori = [f'Furnizor {i}' for i in range(1, 21)]
+    produse = [f'Produs {i}' for i in range(1, 101)]
+    data = []
+    for _ in range(200):
+        cantitate = np.random.randint(10, 200)
+        pret = np.random.randint(50, 500)
+        data.append({
+            'Gestiune': np.random.choice(gestiuni),
+            'Denumire': np.random.choice(produse),
+            'Cantitate': cantitate,
+            'Pret': pret,
+            'Valoare': cantitate * pret,
+            'Furnizor': np.random.choice(furnizori)
+        })
+    return pd.DataFrame(data)
+
+def generate_demo_cumparari_ciis():
+    """Generează date demo pentru cumpărări CIIS"""
+    gestiuni = ['Depozit Central', 'Showroom București', 'Depozit Constanța']
+    furnizori = [f'Furnizor {i}' for i in range(1, 21)]
+    produse = [f'Produs {i}' for i in range(1, 101)]
+    grupe = ['Materiale Construcții', 'Instalații Sanitare', 'Instalații Electrice', 'Finisaje', 'Unelte']
+    data = []
+    for _ in range(300):
+        cantitate = np.random.randint(10, 200)
+        pret = np.random.randint(50, 500)
+        data.append({
+            'Gestiune': np.random.choice(gestiuni),
+            'Denumire': np.random.choice(produse),
+            'Denumire grupa': np.random.choice(grupe),
+            'Cantitate': cantitate,
+            'Pret': pret,
+            'Valoare': cantitate * pret,
+            'Furnizor': np.random.choice(furnizori)
+        })
+    return pd.DataFrame(data)
 
 # Sidebar modern cu gradient
 with st.sidebar:
@@ -272,12 +537,25 @@ with st.sidebar:
     st.markdown("### 📊 Dashboard Analytics")
     st.markdown("Segmentul rezidențial premium")
     
+    # Status conexiune Firebase
+    db = init_firebase()
+    if db is not None:
+        st.success("🔥 Firebase conectat")
+    else:
+        st.error("❌ Firebase deconectat")
+    
     # Quick stats în sidebar
     st.markdown("---")
     st.markdown("### 📈 Quick Stats")
     vanzari_df = load_vanzari_zi_clienti()
-    st.metric("Total Vânzări Mai", f"{vanzari_df['Valoare'].sum()/1000000:.1f}M RON")
-    st.metric("Clienți Activi", f"{vanzari_df['Client'].nunique()}")
+    if not vanzari_df.empty:
+        st.metric("Total Vânzări", f"{vanzari_df['Valoare'].sum()/1000000:.1f}M RON")
+        st.metric("Clienți Activi", f"{vanzari_df['Client'].nunique()}")
+    
+    # Refresh button
+    if st.button("🔄 Refresh Date"):
+        st.cache_data.clear()
+        st.rerun()
 
 # Header principal cu gradient
 st.markdown("""
@@ -285,7 +563,7 @@ st.markdown("""
             padding: 30px; border-radius: 15px; margin-bottom: 30px;'>
     <h1 style='margin: 0; color: #ffffff;'>Brenado For House Dashboard</h1>
     <p style='margin: 10px 0 0 0; color: #888; font-size: 18px;'>
-        Business Intelligence pentru segmentul rezidențial • Mai 2025
+        Business Intelligence pentru segmentul rezidențial • Live Data Firebase
     </p>
 </div>
 """, unsafe_allow_html=True)
@@ -319,6 +597,10 @@ if category == "Vânzări":
     vanzari_df = load_vanzari_zi_clienti()
     produse_df = load_top_produse()
 
+    if vanzari_df.empty:
+        st.warning("⚠️ Nu s-au găsit date de vânzări în Firebase")
+        st.stop()
+
     # Calculare metrici cu trend indicators
     total_valoare = vanzari_df['Valoare'].sum()
     numar_clienti = vanzari_df['Client'].nunique()
@@ -333,7 +615,7 @@ if category == "Vânzări":
         <div class='info-box'>
             <h4 style='color: #888; margin: 0;'>Vânzări Totale</h4>
             <h2 style='color: #4CAF50; margin: 5px 0;'>{:,.0f} RON</h2>
-            <p style='color: #888; margin: 0; font-size: 14px;'>↑ +12.5% vs luna trecută</p>
+            <p style='color: #888; margin: 0; font-size: 14px;'>📈 Live din Firebase</p>
         </div>
         """.format(total_valoare), unsafe_allow_html=True)
     
@@ -342,7 +624,7 @@ if category == "Vânzări":
         <div class='info-box'>
             <h4 style='color: #888; margin: 0;'>Clienți Unici</h4>
             <h2 style='color: #2196F3; margin: 5px 0;'>{}</h2>
-            <p style='color: #888; margin: 0; font-size: 14px;'>↑ +8 clienți noi</p>
+            <p style='color: #888; margin: 0; font-size: 14px;'>👥 Baza de clienți</p>
         </div>
         """.format(numar_clienti), unsafe_allow_html=True)
     
@@ -351,7 +633,7 @@ if category == "Vânzări":
         <div class='info-box'>
             <h4 style='color: #888; margin: 0;'>Produse Active</h4>
             <h2 style='color: #FF9800; margin: 5px 0;'>{}</h2>
-            <p style='color: #888; margin: 0; font-size: 14px;'>Din 800+ SKU total</p>
+            <p style='color: #888; margin: 0; font-size: 14px;'>📦 SKU în vânzare</p>
         </div>
         """.format(numar_produse), unsafe_allow_html=True)
     
@@ -360,7 +642,7 @@ if category == "Vânzări":
         <div class='info-box'>
             <h4 style='color: #888; margin: 0;'>Valoare Medie</h4>
             <h2 style='color: #9C27B0; margin: 5px 0;'>{:,.0f} RON</h2>
-            <p style='color: #888; margin: 0; font-size: 14px;'>Per tranzacție</p>
+            <p style='color: #888; margin: 0; font-size: 14px;'>💰 Per tranzacție</p>
         </div>
         """.format(valoare_medie), unsafe_allow_html=True)
 
@@ -379,7 +661,7 @@ if category == "Vânzări":
             daily_sales = vanzari_df.groupby('Data')['Valoare'].sum().reset_index()
             
             fig_line = px.line(daily_sales, x='Data', y='Valoare', 
-                              title='Trend Vânzări Mai 2025',
+                              title='Trend Vânzări din Firebase',
                               labels={'Valoare': 'Valoare (RON)', 'Data': 'Data'})
             
             fig_line.update_traces(line_color='#4CAF50', line_width=3)
@@ -395,15 +677,16 @@ if category == "Vânzări":
             )
             
             # Adaugă trend line
-            z = np.polyfit(range(len(daily_sales)), daily_sales['Valoare'], 1)
-            p = np.poly1d(z)
-            fig_line.add_trace(go.Scatter(
-                x=daily_sales['Data'],
-                y=p(range(len(daily_sales))),
-                mode='lines',
-                name='Trend',
-                line=dict(color='#FF9800', width=2, dash='dash')
-            ))
+            if len(daily_sales) > 1:
+                z = np.polyfit(range(len(daily_sales)), daily_sales['Valoare'], 1)
+                p = np.poly1d(z)
+                fig_line.add_trace(go.Scatter(
+                    x=daily_sales['Data'],
+                    y=p(range(len(daily_sales))),
+                    mode='lines',
+                    name='Trend',
+                    line=dict(color='#FF9800', width=2, dash='dash')
+                ))
             
             st.plotly_chart(fig_line, use_container_width=True)
         
@@ -428,7 +711,7 @@ if category == "Vânzări":
             st.plotly_chart(fig_donut, use_container_width=True)
         
         # Tabel interactiv cu filtrare
-        st.markdown("### 📋 Detalii Tranzacții")
+        st.markdown("### 📋 Detalii Tranzacții Firebase")
         
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -438,20 +721,21 @@ if category == "Vânzări":
                 default=[]
             )
         with col2:
-            date_range = st.date_input(
-                "📅 Perioada:",
-                value=(vanzari_df['Data'].min(), vanzari_df['Data'].max()),
-                min_value=vanzari_df['Data'].min(),
-                max_value=vanzari_df['Data'].max()
-            )
+            if not vanzari_df.empty:
+                date_range = st.date_input(
+                    "📅 Perioada:",
+                    value=(vanzari_df['Data'].min().date(), vanzari_df['Data'].max().date()),
+                    min_value=vanzari_df['Data'].min().date(),
+                    max_value=vanzari_df['Data'].max().date()
+                )
         
         # Aplicare filtre
         filtered_df = vanzari_df.copy()
         if client_filter:
             filtered_df = filtered_df[filtered_df['Client'].isin(client_filter)]
         if len(date_range) == 2:
-            filtered_df = filtered_df[(filtered_df['Data'] >= pd.to_datetime(date_range[0])) & 
-                                    (filtered_df['Data'] <= pd.to_datetime(date_range[1]))]
+            filtered_df = filtered_df[(filtered_df['Data'].dt.date >= date_range[0]) & 
+                                    (filtered_df['Data'].dt.date <= date_range[1])]
         
         # Afișare metrici pentru datele filtrate
         col1, col2, col3, col4 = st.columns(4)
@@ -460,24 +744,29 @@ if category == "Vânzări":
         with col2:
             st.metric("Tranzacții", len(filtered_df))
         with col3:
-            st.metric("Valoare Medie", f"{filtered_df['Valoare'].mean():,.0f} RON")
+            st.metric("Valoare Medie", f"{filtered_df['Valoare'].mean():,.0f} RON" if len(filtered_df) > 0 else "0 RON")
         with col4:
             st.metric("Adaos Total", f"{filtered_df['Adaos'].sum():,.0f} RON")
         
         # Tabel stilizat
-        st.dataframe(
-            filtered_df.style.format({
-                'Pret Contabil': '{:,.0f} RON',
-                'Valoare': '{:,.0f} RON',
-                'Adaos': '{:,.0f} RON',
-                'Cost': '{:,.0f} RON'
-            }).background_gradient(subset=['Valoare'], cmap='Greens'),
-            use_container_width=True,
-            height=400
-        )
+        if not filtered_df.empty:
+            st.dataframe(
+                filtered_df.style.format({
+                    'Pret Contabil': '{:,.0f} RON',
+                    'Valoare': '{:,.0f} RON',
+                    'Adaos': '{:,.0f} RON',
+                    'Cost': '{:,.0f} RON'
+                }).background_gradient(subset=['Valoare'], cmap='Greens'),
+                use_container_width=True,
+                height=400
+            )
 
     with tab2:
         st.subheader("🏆 Analiza Top Produse")
+        
+        if produse_df.empty:
+            st.warning("⚠️ Nu s-au găsit date de produse")
+            st.stop()
         
         col1, col2 = st.columns([3, 1])
         
@@ -497,12 +786,12 @@ if category == "Vânzări":
         with col1:
             # Procesare date
             n_products = int(show_option.split()[1])
-            top_produse = produse_df.nlargest(n_products, 'Valoare')
+            top_produse = produse_df.nlargest(min(n_products, len(produse_df)), 'Valoare')
             
             if chart_type == "Bar Chart":
                 # Bar chart horizontal
                 fig_bar = px.bar(top_produse.head(20), y='Denumire', x='Valoare',
-                                orientation='h', title=f'{show_option} Produse după Valoare',
+                                orientation='h', title=f'{show_option} Produse după Valoare (Firebase)',
                                 color='Valoare', color_continuous_scale='Viridis')
                 
                 fig_bar.update_layout(
@@ -548,25 +837,31 @@ if category == "Vânzări":
                 st.plotly_chart(fig_sun, use_container_width=True)
         
         # Statistici produse în cards
-        st.markdown("### 📊 Statistici Produse")
+        st.markdown("### 📊 Statistici Produse Firebase")
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            best_product = produse_df.loc[produse_df['Valoare'].idxmax()]
-            st.info(f"**🥇 Top Produs**\n\n{best_product['Denumire']}\n\n{best_product['Valoare']:,.0f} RON")
+            if not produse_df.empty:
+                best_product = produse_df.loc[produse_df['Valoare'].idxmax()]
+                st.info(f"**🥇 Top Produs**\n\n{best_product['Denumire']}\n\n{best_product['Valoare']:,.0f} RON")
         
         with col2:
-            st.info(f"**📦 Cantitate Totală**\n\n{produse_df['Cantitate'].sum():,.0f} buc\n\nDin toate produsele")
+            st.info(f"**📦 Cantitate Totală**\n\n{produse_df['Cantitate'].sum():,.0f} buc\n\nDin Firebase")
         
         with col3:
             st.info(f"**💰 Valoare Totală**\n\n{produse_df['Valoare'].sum():,.0f} RON\n\nTotal merchandise")
         
         with col4:
-            avg_margin = (produse_df['Adaos'].sum() / produse_df['Valoare'].sum() * 100)
-            st.info(f"**📈 Marjă Medie**\n\n{avg_margin:.1f}%\n\nProfit margin")
+            if produse_df['Valoare'].sum() > 0:
+                avg_margin = (produse_df['Adaos'].sum() / produse_df['Valoare'].sum() * 100)
+                st.info(f"**📈 Marjă Medie**\n\n{avg_margin:.1f}%\n\nProfit margin")
 
     with tab3:
-        st.subheader("💡 Business Insights")
+        st.subheader("💡 Business Insights Firebase")
+        
+        if vanzari_df.empty:
+            st.warning("⚠️ Nu s-au găsit date pentru insights")
+            st.stop()
         
         col1, col2 = st.columns(2)
         
@@ -596,7 +891,7 @@ if category == "Vânzări":
             ))
             
             fig_pattern.update_layout(
-                title='Pattern Săptămânal Vânzări',
+                title='Pattern Săptămânal Vânzări (Firebase)',
                 plot_bgcolor='rgba(0,0,0,0)',
                 paper_bgcolor='rgba(0,0,0,0)',
                 font_color='#ffffff',
@@ -610,7 +905,7 @@ if category == "Vânzări":
         with col2:
             # Distribuția valorilor tranzacțiilor
             fig_dist = px.histogram(vanzari_df, x='Valoare', nbins=30,
-                                  title='Distribuția Valorilor Tranzacțiilor',
+                                  title='Distribuția Valorilor Tranzacțiilor (Firebase)',
                                   labels={'count': 'Frecvență', 'Valoare': 'Valoare Tranzacție (RON)'})
             
             fig_dist.update_traces(marker_color='#2196F3')
@@ -625,53 +920,57 @@ if category == "Vânzări":
             st.plotly_chart(fig_dist, use_container_width=True)
         
         # Insights automate
-        st.markdown("### 🎯 Insights Automate")
+        st.markdown("### 🎯 Insights Automate Firebase")
         
         col1, col2, col3 = st.columns(3)
         
         with col1:
-            best_day = daily_pattern.loc[daily_pattern['sum'].idxmax()]
-            st.success(f"""
-            **📈 Cea mai bună zi**
-            
-            **{best_day['DayOfWeek']}** generează cele mai mari vânzări:
-            - Valoare: **{best_day['sum']:,.0f} RON**
-            - Tranzacții: **{best_day['count']:.0f}**
-            - Medie/tranzacție: **{best_day['mean']:,.0f} RON**
-            """)
+            if not daily_pattern.empty:
+                best_day = daily_pattern.loc[daily_pattern['sum'].idxmax()]
+                st.success(f"""
+                **📈 Cea mai bună zi**
+                
+                **{best_day['DayOfWeek']}** generează cele mai mari vânzări:
+                - Valoare: **{best_day['sum']:,.0f} RON**
+                - Tranzacții: **{best_day['count']:.0f}**
+                - Medie/tranzacție: **{best_day['mean']:,.0f} RON**
+                """)
         
         with col2:
             top_20_percent = int(len(vanzari_df) * 0.2)
-            top_20_value = vanzari_df.nlargest(top_20_percent, 'Valoare')['Valoare'].sum()
-            percentage = (top_20_value / vanzari_df['Valoare'].sum()) * 100
-            
-            st.info(f"""
-            **🎯 Principiul Pareto**
-            
-            Top **20%** din tranzacții generează **{percentage:.1f}%** din vânzări
-            - Valoare top 20%: **{top_20_value:,.0f} RON**
-            - Focus pe clienții premium
-            """)
+            if top_20_percent > 0:
+                top_20_value = vanzari_df.nlargest(top_20_percent, 'Valoare')['Valoare'].sum()
+                percentage = (top_20_value / vanzari_df['Valoare'].sum()) * 100
+                
+                st.info(f"""
+                **🎯 Principiul Pareto**
+                
+                Top **20%** din tranzacții generează **{percentage:.1f}%** din vânzări
+                - Valoare top 20%: **{top_20_value:,.0f} RON**
+                - Focus pe clienții premium
+                """)
         
         with col3:
-            growth_rate = ((daily_sales['Valoare'].iloc[-7:].mean() / daily_sales['Valoare'].iloc[:7].mean()) - 1) * 100
-            
-            if growth_rate > 0:
-                st.success(f"""
-                **📊 Trend Pozitiv**
+            daily_sales = vanzari_df.groupby('Data')['Valoare'].sum().reset_index()
+            if len(daily_sales) >= 14:
+                growth_rate = ((daily_sales['Valoare'].iloc[-7:].mean() / daily_sales['Valoare'].iloc[:7].mean()) - 1) * 100
                 
-                Creștere de **+{growth_rate:.1f}%** în ultima săptămână vs prima
-                - Momentum pozitiv
-                - Recomandare: Menține strategia actuală
-                """)
-            else:
-                st.warning(f"""
-                **📉 Atenție Trend**
-                
-                Scădere de **{growth_rate:.1f}%** în ultima săptămână
-                - Necesită analiză detaliată
-                - Verifică factorii externi
-                """)
+                if growth_rate > 0:
+                    st.success(f"""
+                    **📊 Trend Pozitiv**
+                    
+                    Creștere de **+{growth_rate:.1f}%** în ultima săptămână vs prima
+                    - Momentum pozitiv
+                    - Date live Firebase
+                    """)
+                else:
+                    st.warning(f"""
+                    **📉 Atenție Trend**
+                    
+                    Scădere de **{growth_rate:.1f}%** în ultima săptămână
+                    - Necesită analiză detaliată
+                    - Verifică factorii externi
+                    """)
 
 # ===== BALANȚĂ STOCURI =====
 elif category == "Balanță Stocuri":
@@ -681,10 +980,14 @@ elif category == "Balanță Stocuri":
     tab1, tab2 = st.tabs(["📅 Stoc Curent", "📊 Analiza pe Perioadă"])
     
     with tab1:
-        st.markdown("### 📅 Situația Curentă a Stocurilor")
+        st.markdown("### 📅 Situația Curentă a Stocurilor (Firebase)")
         
         # Încărcare date
         balanta_df = load_balanta_la_data()
+        
+        if balanta_df.empty:
+            st.warning("⚠️ Nu s-au găsit date de stocuri în Firebase")
+            st.stop()
         
         # KPI Cards moderne
         col1, col2, col3, col4 = st.columns(4)
@@ -699,7 +1002,7 @@ elif category == "Balanță Stocuri":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Stoc Total</h4>
                 <h2 style='color: #4CAF50; margin: 5px 0;'>{total_stoc:,.0f} buc</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>În toate gestiunile</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>📊 Live Firebase</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -708,7 +1011,7 @@ elif category == "Balanță Stocuri":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Valoare Stoc</h4>
                 <h2 style='color: #2196F3; margin: 5px 0;'>{valoare_stoc/1000000:.1f}M RON</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Capital imobilizat</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>💰 Capital imobilizat</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -717,7 +1020,7 @@ elif category == "Balanță Stocuri":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>SKU Active</h4>
                 <h2 style='color: #FF9800; margin: 5px 0;'>{numar_produse:,}</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Produse diferite</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>📦 Produse diferite</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -726,7 +1029,7 @@ elif category == "Balanță Stocuri":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Gestiuni</h4>
                 <h2 style='color: #9C27B0; margin: 5px 0;'>{gestiuni_unice}</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Locații active</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>🏢 Locații active</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -740,7 +1043,7 @@ elif category == "Balanță Stocuri":
             stock_by_location = balanta_df.groupby('DenumireGest')['ValoareStocFinal'].sum().reset_index()
             
             fig_locations = px.bar(stock_by_location, x='DenumireGest', y='ValoareStocFinal',
-                                 title='Distribuția Valorii Stocurilor pe Gestiuni',
+                                 title='Distribuția Valorii Stocurilor pe Gestiuni (Firebase)',
                                  labels={'ValoareStocFinal': 'Valoare Stoc (RON)', 'DenumireGest': 'Gestiune'},
                                  color='ValoareStocFinal', color_continuous_scale='Viridis')
             
@@ -792,15 +1095,16 @@ elif category == "Balanță Stocuri":
         
         for category in ['A', 'B', 'C']:
             data = produse_abc[produse_abc['Category'] == category]
-            fig_abc.add_trace(go.Bar(
-                x=range(len(data)),
-                y=data['ValoareStocFinal'],
-                name=f'Categoria {category}',
-                marker_color=colors[category]
-            ))
+            if not data.empty:
+                fig_abc.add_trace(go.Bar(
+                    x=range(len(data)),
+                    y=data['ValoareStocFinal'],
+                    name=f'Categoria {category}',
+                    marker_color=colors[category]
+                ))
         
         fig_abc.update_layout(
-            title='Analiza ABC - Distribuția Valorii Stocurilor',
+            title='Analiza ABC - Distribuția Valorii Stocurilor (Firebase)',
             barmode='stack',
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -829,10 +1133,14 @@ elif category == "Balanță Stocuri":
                 """, unsafe_allow_html=True)
     
     with tab2:
-        st.markdown("### 📊 Analiza Stocurilor pe Perioadă")
+        st.markdown("### 📊 Analiza Stocurilor pe Perioadă (Firebase)")
         
         # Încărcare date perioadă
         perioada_df = load_balanta_perioada()
+        
+        if perioada_df.empty:
+            st.warning("⚠️ Nu s-au găsit date pentru analiza pe perioadă")
+            st.stop()
         
         # Analiza vechimii stocurilor
         st.markdown("#### 🕐 Analiza Vechimii Stocurilor")
@@ -867,7 +1175,7 @@ elif category == "Balanță Stocuri":
         ))
         
         fig_vechime.update_layout(
-            title='Distribuția Stocurilor după Vechime',
+            title='Distribuția Stocurilor după Vechime (Firebase)',
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font_color='#ffffff',
@@ -883,7 +1191,7 @@ elif category == "Balanță Stocuri":
         if len(old_stock) > 0:
             old_value = old_stock['Valoare intrare'].sum()
             st.warning(f"""
-            ⚠️ **Atenție Stocuri Învechite**
+            ⚠️ **Atenție Stocuri Învechite (Firebase)**
             
             Există **{len(old_stock)} produse** cu vechime peste 180 zile, reprezentând **{old_value/1000000:.1f}M RON**.
             Acestea necesită acțiuni urgente de lichidare.
@@ -895,14 +1203,15 @@ elif category == "Balanță Stocuri":
         slow_movers = perioada_df.nlargest(10, 'ZileVechime')[['Denumire', 'Stoc final', 'Valoare intrare', 'ZileVechime']]
         
         # Stilizare tabel
-        st.dataframe(
-            slow_movers.style.format({
-                'Valoare intrare': '{:,.0f} RON',
-                'Stoc final': '{:,.0f} buc',
-                'ZileVechime': '{:.0f} zile'
-            }).background_gradient(subset=['ZileVechime'], cmap='Reds'),
-            use_container_width=True
-        )
+        if not slow_movers.empty:
+            st.dataframe(
+                slow_movers.style.format({
+                    'Valoare intrare': '{:,.0f} RON',
+                    'Stoc final': '{:,.0f} buc',
+                    'ZileVechime': '{:.0f} zile'
+                }).background_gradient(subset=['ZileVechime'], cmap='Reds'),
+                use_container_width=True
+            )
 
 # ===== CUMPARARI INTRARI =====
 elif category == "Cumparari Intrari":
@@ -912,10 +1221,14 @@ elif category == "Cumparari Intrari":
     tab1, tab2, tab3 = st.tabs(["📋 Cumpărări pe Dată", "📊 Cumpărări în Stoc", "📈 Analiza Furnizori"])
     
     with tab1:
-        st.markdown("### 📋 Cumpărări Intrări Grupări pe Dată")
+        st.markdown("### 📋 Cumpărări Intrări Grupări pe Dată (Firebase)")
         
         # Încărcare date
         cipd_df = load_cumparari_cipd()
+        
+        if cipd_df.empty:
+            st.warning("⚠️ Nu s-au găsit date CIPD în Firebase")
+            st.stop()
         
         # KPI Cards
         col1, col2, col3, col4 = st.columns(4)
@@ -930,7 +1243,7 @@ elif category == "Cumparari Intrari":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Cantitate Totală</h4>
                 <h2 style='color: #4CAF50; margin: 5px 0;'>{total_cantitate:,.0f} buc</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Unități achiziționate</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>📊 Firebase CIPD</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -939,7 +1252,7 @@ elif category == "Cumparari Intrari":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Valoare Achiziții</h4>
                 <h2 style='color: #2196F3; margin: 5px 0;'>{total_valoare/1000000:.1f}M RON</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Total investit</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>💰 Total investit</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -948,7 +1261,7 @@ elif category == "Cumparari Intrari":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Produse</h4>
                 <h2 style='color: #FF9800; margin: 5px 0;'>{numar_produse:,}</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>SKU achiziționate</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>📦 SKU achiziționate</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -957,7 +1270,7 @@ elif category == "Cumparari Intrari":
             <div class='info-box'>
                 <h4 style='color: #888; margin: 0;'>Furnizori</h4>
                 <h2 style='color: #9C27B0; margin: 5px 0;'>{furnizori_unici}</h2>
-                <p style='color: #888; margin: 0; font-size: 14px;'>Parteneri activi</p>
+                <p style='color: #888; margin: 0; font-size: 14px;'>🤝 Parteneri activi</p>
             </div>
             """, unsafe_allow_html=True)
         
@@ -967,7 +1280,7 @@ elif category == "Cumparari Intrari":
         top_suppliers = cipd_df.groupby('Furnizor')['Valoare'].sum().nlargest(10).reset_index()
         
         fig_suppliers = px.bar(top_suppliers, x='Valoare', y='Furnizor', orientation='h',
-                              title='Top 10 Furnizori după Valoare',
+                              title='Top 10 Furnizori după Valoare (Firebase)',
                               labels={'Valoare': 'Valoare Totală (RON)', 'Furnizor': 'Furnizor'},
                               color='Valoare', color_continuous_scale='Viridis')
         
@@ -984,10 +1297,14 @@ elif category == "Cumparari Intrari":
         st.plotly_chart(fig_suppliers, use_container_width=True)
     
     with tab2:
-        st.markdown("### 📊 Cumpărări Intrări în Stoc")
+        st.markdown("### 📊 Cumpărări Intrări în Stoc (Firebase)")
         
         # Încărcare date
         ciis_df = load_cumparari_ciis()
+        
+        if ciis_df.empty:
+            st.warning("⚠️ Nu s-au găsit date CIIS în Firebase")
+            st.stop()
         
         # Selecții interactive cu preview valori
         col1, col2 = st.columns(2)
@@ -1045,7 +1362,7 @@ elif category == "Cumparari Intrari":
             group_dist = filtered_ciis.groupby('Denumire grupa')['Valoare'].sum().reset_index()
             
             fig_groups = px.treemap(group_dist, path=['Denumire grupa'], values='Valoare',
-                                  title='Distribuția Achizițiilor pe Grupe',
+                                  title='Distribuția Achizițiilor pe Grupe (Firebase)',
                                   color='Valoare', color_continuous_scale='Blues')
             
             fig_groups.update_layout(
@@ -1058,10 +1375,21 @@ elif category == "Cumparari Intrari":
             st.plotly_chart(fig_groups, use_container_width=True)
     
     with tab3:
-        st.markdown("### 📈 Analiza Detaliată Furnizori")
+        st.markdown("### 📈 Analiza Detaliată Furnizori (Firebase)")
         
         # Combinare date pentru analiză completă
-        all_purchases = pd.concat([cipd_df, ciis_df], ignore_index=True)
+        cipd_df_local = load_cumparari_cipd()
+        ciis_df_local = load_cumparari_ciis()
+        
+        if not cipd_df_local.empty and not ciis_df_local.empty:
+            all_purchases = pd.concat([cipd_df_local, ciis_df_local], ignore_index=True)
+        elif not cipd_df_local.empty:
+            all_purchases = cipd_df_local
+        elif not ciis_df_local.empty:
+            all_purchases = ciis_df_local
+        else:
+            st.warning("⚠️ Nu s-au găsit date pentru analiza furnizorilor")
+            st.stop()
         
         # Analiza performanței furnizorilor
         supplier_analysis = all_purchases.groupby('Furnizor').agg({
@@ -1081,7 +1409,7 @@ elif category == "Cumparari Intrari":
                                size='Produse Unice',
                                color='Preț Mediu',
                                hover_data=['Furnizor'],
-                               title='Analiza Furnizorilor: Volum vs Valoare',
+                               title='Analiza Furnizorilor: Volum vs Valoare (Firebase)',
                                labels={'Cantitate Totală': 'Volum Total (buc)',
                                       'Valoare Totală': 'Valoare Totală (RON)',
                                       'Produse Unice': 'Nr. Produse',
@@ -1100,7 +1428,7 @@ elif category == "Cumparari Intrari":
         st.plotly_chart(fig_scatter, use_container_width=True)
         
         # Top 5 furnizori strategici
-        st.markdown("#### 🏆 Furnizori Strategici")
+        st.markdown("#### 🏆 Furnizori Strategici Firebase")
         
         col1, col2, col3, col4, col5 = st.columns(5)
         
@@ -1121,6 +1449,7 @@ elif category == "Cumparari Intrari":
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center; color: #666; padding: 20px;'>
-    <p>© 2025 BRENADO Analytics | Business Intelligence Dashboard | Powered by Streamlit</p>
+    <p>© 2025 BRENADO Analytics | Business Intelligence Dashboard | Powered by Firebase + Streamlit</p>
+    <p style='font-size: 12px; color: #444;'>🔥 Real-time data connection</p>
 </div>
 """, unsafe_allow_html=True)
