@@ -348,24 +348,13 @@ def render_sidebar():
     with st.sidebar:
         st.header("🔧 Controale Dashboard")
         
-        # Buton refresh
-        if st.button("🔄 Reîmprospătează Date", type="primary"):
-            st.cache_data.clear()
-            st.experimental_rerun()
-        
-        st.markdown("---")
+
         
         # Informații sistem
         st.subheader("ℹ️ Informații Sistem")
         st.info(f"🕒 Ultimul refresh: {datetime.now().strftime('%H:%M:%S')}")
         
-        # Auto-refresh (opțional)
-        auto_refresh = st.checkbox("🔄 Auto-refresh (30s)")
-        if auto_refresh:
-            time.sleep(30)
-            st.experimental_rerun()
-        
-        st.markdown("---")
+  
         
         # Status Firebase
         st.subheader("🔥 Status Firebase")
