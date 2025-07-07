@@ -5,3 +5,4 @@ openpyxl
 numpy
 matplotlib>=3.8 
 firebase-admin>=6.0.0
+scipy
