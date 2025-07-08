@@ -1,0 +1,1 @@
+# Constante și mapări coloane
