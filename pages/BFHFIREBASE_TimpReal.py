@@ -111,23 +111,28 @@ def load_summary_from_firebase():
         st.error(f"❌ Eroare încărcare sumarizare: {e}")
         return {}
 
+@st.cache_data(ttl=3600)
 def get_last_sync_info():
-    """Verifică ultima sincronizare cu ERP"""
+    """Returnează informații despre ultimul upload"""
     try:
+        # Aici trebuie să inițializezi Firebase dacă nu e deja inițializat
         db = init_firebase()
-        if not db:
+        if db is None:
             return None
-        
-        # Citește ultimul log
-        docs = db.collection('sync_logs').order_by('upload_date', direction=firestore.Query.DESCENDING).limit(1).stream()
-        
-        for doc in docs:
-            return doc.to_dict()
-        
+            
+        doc = db.collection('sync_info').document('last_upload').get()
+        if doc.exists:
+            data = doc.to_dict()
+            # Formatează data pentru afișare
+            if 'upload_date' in data and data['upload_date']:
+                if hasattr(data['upload_date'], 'strftime'):
+                    data['upload_date'] = data['upload_date'].strftime('%d/%m/%Y %H:%M')
+                else:
+                    data['upload_date'] = str(data['upload_date'])[:16]
+            return data
         return None
-        
     except Exception as e:
-        st.error(f"❌ Eroare verificare sync: {e}")
+        st.error(f"Eroare citire sync info: {e}")
         return None
 
 # ===== FUNCȚII DASHBOARD =====
