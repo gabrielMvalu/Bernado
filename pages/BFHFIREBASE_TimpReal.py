@@ -15,7 +15,7 @@ import time
 
 # ===== CONFIGURARE PAGINĂ =====
 st.set_page_config(
-    page_title="Brenado For House - Firebase Real-Time",
+    page_title="Brenado For House ",
     page_icon="🏠",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -115,7 +115,6 @@ def load_summary_from_firebase():
 def get_last_sync_info():
     """Returnează informații despre ultimul upload"""
     try:
-        # Aici trebuie să inițializezi Firebase dacă nu e deja inițializat
         db = init_firebase()
         if db is None:
             return None
@@ -123,7 +122,6 @@ def get_last_sync_info():
         doc = db.collection('sync_info').document('last_upload').get()
         if doc.exists:
             data = doc.to_dict()
-            # Formatează data pentru afișare
             if 'upload_date' in data and data['upload_date']:
                 if hasattr(data['upload_date'], 'strftime'):
                     data['upload_date'] = data['upload_date'].strftime('%d/%m/%Y %H:%M')
@@ -139,8 +137,8 @@ def get_last_sync_info():
 
 def render_header():
     """Randare header-ul aplicației"""
-    st.title("Brenado For House - Dashboard în Timp Real")
-    st.markdown("*Conectat direct la Firebase pentru date live din ERP B-org*")
+    st.title("Brenado For House ")
+    st.markdown("*Conectat Firebase - date live din ERP B-org*")
     st.markdown("---")
 
 def render_connection_status():
