@@ -1,5 +1,5 @@
 """
-Brenado For House - Dashboard Firebase în Timp Real (OPTIMIZAT)
+Brenado For House - Dashboard Firebase în Timp Real
 Autor: Castemill SRL
 Data: Iulie 2025
 """
@@ -21,7 +21,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ===== FUNCȚII FIREBASE OPTIMIZATE =====
+# ===== FUNCȚII FIREBASE =====
 
 @st.cache_resource
 def init_firebase():
@@ -59,10 +59,9 @@ def init_firebase():
         st.error(f"❌ Eroare conectare Firebase: {e}")
         return None
 
-# 🔥 OPTIMIZARE MAJORĂ: Cache permanent pentru datele mari
-@st.cache_data()  # FĂRĂ TTL = cache permanent până la refresh manual!
+@st.cache_data(ttl=300)  # Cache 5 minute
 def load_vanzari_from_firebase():
-    """Încarcă datele de vânzări din Firebase - CACHE PERMANENT"""
+    """Încarcă datele de vânzări din Firebase"""
     try:
         db = init_firebase()
         if not db:
@@ -91,9 +90,9 @@ def load_vanzari_from_firebase():
         st.error(f"❌ Eroare încărcare date: {e}")
         return pd.DataFrame()
 
-@st.cache_data()  # FĂRĂ TTL = cache permanent
+@st.cache_data(ttl=300)
 def load_summary_from_firebase():
-    """Încarcă sumarizarea din Firebase - CACHE PERMANENT"""
+    """Încarcă sumarizarea din Firebase"""
     try:
         db = init_firebase()
         if not db:
@@ -112,11 +111,11 @@ def load_summary_from_firebase():
         st.error(f"❌ Eroare încărcare sumarizare: {e}")
         return {}
 
-# 🔥 DOAR sync info se verifică des (e mic - 1 document)
-@st.cache_data(ttl=300)  # 5 minute OK - e doar 1 document mic
+@st.cache_data(ttl=3600)
 def get_last_sync_info():
-    """Returnează informații despre ultimul upload - 1 document mic"""
+    """Returnează informații despre ultimul upload"""
     try:
+        # Aici trebuie să inițializezi Firebase dacă nu e deja inițializat
         db = init_firebase()
         if db is None:
             return None
@@ -136,37 +135,6 @@ def get_last_sync_info():
         st.error(f"Eroare citire sync info: {e}")
         return None
 
-# 🔥 FUNCȚIE NOUĂ: Verificare inteligentă pentru invalidare cache
-def check_and_refresh_data():
-    """Verifică dacă trebuie să invalideze cache-ul bazat pe sync info"""
-    
-    # Inițializează session state pentru tracking
-    if 'last_known_sync' not in st.session_state:
-        st.session_state.last_known_sync = None
-    
-    # Obține info sync curent
-    current_sync = get_last_sync_info()
-    
-    if current_sync:
-        current_sync_date = current_sync.get('upload_date')
-        
-        # Dacă e primul check sau dacă sync-ul s-a schimbat
-        if (st.session_state.last_known_sync is None or 
-            current_sync_date != st.session_state.last_known_sync):
-            
-            # Invalidează cache-ul pentru datele mari
-            load_vanzari_from_firebase.clear()
-            load_summary_from_firebase.clear()
-            
-            # Actualizează session state
-            st.session_state.last_known_sync = current_sync_date
-            
-            # Anunță utilizatorul
-            if st.session_state.last_known_sync is not None:
-                st.success("🔄 Date noi detectate automat! Cache actualizat.")
-    
-    return current_sync
-
 # ===== FUNCȚII DASHBOARD =====
 
 def render_header():
@@ -176,8 +144,8 @@ def render_header():
     st.markdown("---")
 
 def render_connection_status():
-    """Afișează statusul conexiunii cu cache info"""
-    last_sync = check_and_refresh_data()  # Verificare inteligentă
+    """Afișează statusul conexiunii"""
+    last_sync = get_last_sync_info()
     
     if last_sync:
         upload_date = last_sync.get('upload_date', 'N/A')
@@ -219,6 +187,8 @@ def render_main_metrics(df, summary=None):
     with col4:
         gestiuni = df['DenumireGestiune'].nunique() if 'DenumireGestiune' in df.columns else 0
         st.metric("🏢 Gestiuni", f"{gestiuni}")
+
+
 
 def render_charts(df):
     """graficele"""
@@ -265,6 +235,10 @@ def render_charts(df):
             st.plotly_chart(fig, use_container_width=True)
         else:
             st.info("Date insuficiente pentru grafic")
+
+
+
+
 
 def render_data_tables(df):
     """Randează tabelele cu date"""
@@ -365,51 +339,14 @@ def render_data_tables(df):
         st.warning("Nu există coloane disponibile pentru afișare")
 
 def render_sidebar():
-    """sidebar-ul cu controale OPTIMIZATE"""
+    """sidebar-ul cu controale"""
     with st.sidebar:
-        st.header("⚙️ Controale Dashboard")
-        
-        # 🔥 SECȚIUNE NOUĂ: Cache Management
-        st.subheader("💾 Cache Management")
-        
-        # Afișează starea cache-ului
-        if 'last_known_sync' in st.session_state and st.session_state.last_known_sync:
-            st.success(f"✅ Cache sincronizat: {st.session_state.last_known_sync}")
-        else:
-            st.info("🔄 Cache inițializare...")
-        
-        # Butoane pentru refresh manual
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            if st.button("🔄 Refresh\nToate Datele", type="primary"):
-                load_vanzari_from_firebase.clear()
-                load_summary_from_firebase.clear()
-                get_last_sync_info.clear()
-                st.session_state.last_known_sync = None
-                st.success("✅ Cache resetat complet!")
-                st.experimental_rerun()
-        
-        with col2:
-            if st.button("🔍 Verifică\nSync"):
-                get_last_sync_info.clear()
-                st.experimental_rerun()
-        
-        st.markdown("---")
-        
-        # 🔥 INFO OPTIMIZARE
-        st.subheader("📊 Info Optimizare")
-        st.info(
-            "💡 **Cache Inteligent Activat**\n\n"
-            "• Datele mari se încarcă o singură dată\n"
-            "• Sync se verifică automat la 5 min\n"
-            "• Cache se invalidează automat la upload nou\n"
-            "• **Costuri Firebase: ~95% mai mici!**"
-        )
-        
+
         # Informații sistem
         st.subheader("ℹ️ Informații Sistem")
         st.info(f"🕒 Ultimul refresh: {datetime.now().strftime('%H:%M:%S')}")
+        
+  
         
         # Status Firebase
         st.subheader("🔥 Status Firebase")
@@ -425,7 +362,7 @@ def render_sidebar():
 # ===== FUNCȚIA PRINCIPALĂ =====
 
 def main():
-    """Funcția principală a aplicației OPTIMIZATE"""
+    """Funcția principală a aplicației"""
     
     # Header
     render_header()
@@ -433,19 +370,15 @@ def main():
     # Sidebar
     render_sidebar()
     
-    # Status conexiune cu verificare inteligentă
+    # Status conexiune
     render_connection_status()
     
     st.markdown("---")
     
-    # Încărcare date cu cache optimizat
+    # Încărcare date
     with st.spinner("📡 Se încarcă datele din Firebase..."):
         df = load_vanzari_from_firebase()
         summary = load_summary_from_firebase()
-    
-    # Info despre cache pentru user
-    if not df.empty:
-        st.success(f"✅ {len(df):,} records încărcate (cache optimizat pentru costuri Firebase)")
     
     # Metrici principale
     render_main_metrics(df, summary)
@@ -462,7 +395,7 @@ def main():
     
     # Footer
     st.markdown("---")
-    st.markdown("*Dashboard optimizat pentru Firebase • Brenado For House ERP*")
+    st.markdown("*Dashboard generat automat din datele Firebase • Brenado For House ERP*")
 
 # ===== RULARE APLICAȚIE =====
 
