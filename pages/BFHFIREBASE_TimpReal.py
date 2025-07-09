@@ -161,12 +161,12 @@ def render_connection_status():
         st.warning("🟡 Nu s-au găsit informații de sincronizare")
 
 def render_main_metrics(df, summary=None):
-    """metricile principale"""
+    """metrici principali"""
     if df.empty:
         st.warning("⚠️ Nu sunt date disponibile în Firebase")
         return
     
-    st.subheader("📊 Metrici Principale")
+    st.subheader("📊 Metrici Principali")
     
     col1, col2, col3, col4 = st.columns(4)
     
