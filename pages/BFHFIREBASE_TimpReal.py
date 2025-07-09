@@ -59,7 +59,7 @@ def init_firebase():
         st.error(f"❌ Eroare conectare Firebase: {e}")
         return None
 
-@st.cache_data(ttl=3600)  # Cache 5 minute
+@st.cache_data(ttl=3600)  # Cache 1h
 def load_vanzari_from_firebase():
     """Încarcă datele de vânzări din Firebase"""
     try:
@@ -111,7 +111,7 @@ def load_summary_from_firebase():
         st.error(f"❌ Eroare încărcare sumarizare: {e}")
         return {}
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def get_last_sync_info():
     """Returnează informații despre ultimul upload"""
     try:
