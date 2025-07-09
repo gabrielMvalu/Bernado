@@ -59,7 +59,7 @@ def init_firebase():
         st.error(f"❌ Eroare conectare Firebase: {e}")
         return None
 
-@st.cache_data(ttl=300)  # Cache 5 minute
+@st.cache_data(ttl=3600)  # Cache 5 minute
 def load_vanzari_from_firebase():
     """Încarcă datele de vânzări din Firebase"""
     try:
@@ -90,7 +90,7 @@ def load_vanzari_from_firebase():
         st.error(f"❌ Eroare încărcare date: {e}")
         return pd.DataFrame()
 
-@st.cache_data(ttl=300)
+@st.cache_data(ttl=3600)
 def load_summary_from_firebase():
     """Încarcă sumarizarea din Firebase"""
     try:
