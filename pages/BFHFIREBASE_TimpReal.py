@@ -238,6 +238,8 @@ def render_charts(df):
 
 
 
+
+
 def render_data_tables(df):
     """Randează tabelele cu date"""
     if df.empty:
@@ -262,16 +264,37 @@ def render_data_tables(df):
         if 'Data' in df.columns:
             # Convertește la datetime dacă nu e deja
             df['Data'] = pd.to_datetime(df['Data'])
-            # Obține datele unice și sortează
-            date_list = sorted(df['Data'].dt.date.unique())
-            date_options = ['Toate zilele'] + [str(date) for date in date_list]
-            selected_date = st.selectbox("Data:", date_options)
+            
+            # Obține min și max din date
+            min_date = df['Data'].min().date()
+            max_date = df['Data'].max().date()
+            today = datetime.now().date()
+            
+            # Verifică dacă ziua curentă e în dataset, altfel folosește ultima dată
+            if today > max_date:
+                default_date = max_date
+            elif today < min_date:
+                default_date = min_date
+            else:
+                default_date = today
+            
+            # Range picker cu default pe ziua curentă (sau ultima disponibilă)
+            date_range = st.date_input(
+                "📅 Interval date:",
+                value=(default_date, default_date),  # Default: doar ziua curentă
+                min_value=min_date,
+                max_value=max_date,
+                format="DD/MM/YYYY",
+                help="Selectează o zi sau trage pentru interval"
+            )
     
     with col4:
         if 'Denumire' in df.columns:
-            # Limitează la primele 50 de produse pentru performanță
-            denumiri = ['Toate produsele'] + list(df['Denumire'].unique())[:50]
-            selected_denumire = st.selectbox("Produs:", denumiri)
+            search_produs = st.text_input(
+                "🔍 Caută produs:", 
+                placeholder="Tastează oricare parte din nume...",
+                help="Ex: 'cablu', 'samsung', '200', etc."
+            )
     
     # Aplicare filtre
     filtered_df = df.copy()
@@ -284,14 +307,32 @@ def render_data_tables(df):
     if 'Agent' in df.columns and selected_agent != 'Toți':
         filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
     
-    # Filtru dată
-    if 'Data' in df.columns and selected_date != 'Toate zilele':
-        selected_date_obj = pd.to_datetime(selected_date).date()
-        filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
+    # Filtru dată (interval)
+    if 'Data' in df.columns and date_range:
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            # Interval selectat
+            start_date, end_date = date_range
+            filtered_df = filtered_df[
+                (filtered_df['Data'].dt.date >= start_date) & 
+                (filtered_df['Data'].dt.date <= end_date)
+            ]
+        else:
+            # O singură dată selectată
+            selected_date_obj = date_range
+            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
     
-    # Filtru denumire produs
-    if 'Denumire' in df.columns and selected_denumire != 'Toate produsele':
-        filtered_df = filtered_df[filtered_df['Denumire'] == selected_denumire]
+    # Filtru produs (fuzzy search)
+    if 'Denumire' in df.columns and search_produs:
+        filtered_df = filtered_df[
+            filtered_df['Denumire'].str.contains(search_produs, case=False, na=False)
+        ]
+    
+    # Afișare numărul de rezultate găsite
+    if not filtered_df.empty:
+        st.info(f"🔍 Găsite: **{len(filtered_df):,}** înregistrări din {len(df):,} totale")
+    else:
+        st.warning("⚠️ Nu s-au găsit înregistrări cu filtrele selectate")
+        return
     
     # Selectare coloane importante pentru afișare
     display_columns = [
@@ -335,6 +376,9 @@ def render_data_tables(df):
                 st.metric("Înregistrări", f"{nr_inregistrari:,}")
     else:
         st.warning("Nu există coloane disponibile pentru afișare")
+
+
+
 
 def render_sidebar():
     """sidebar-ul cu controale"""
