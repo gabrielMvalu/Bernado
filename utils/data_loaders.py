@@ -39,7 +39,7 @@ def load_balanta_perioada():
 def load_neachitate():
     """Încarcă datele din Excel - Facturi Neachitate"""
     try:
-        df = pd.read_excel("data/Neachitate.xlsx")
+        df = pd.read_excel("data/FacturiNeachitate.xlsx")
         return df
     except:
         return pd.DataFrame({
