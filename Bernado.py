@@ -19,6 +19,7 @@ pages = {
     ],
     "Vanzari Timp Real": [
         st.Page("pages/BFHFIREBASE_TimpReal.py", Title="Vanzari - Timp Real")
+    ]
 }
 
 # Crearea și rularea navigației
