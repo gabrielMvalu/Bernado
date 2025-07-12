@@ -195,7 +195,7 @@ st.markdown("---")
 # Selectare categorie principală
 st.subheader("📂 Selectează Categoria")
 category = st.selectbox(
-    "Alege categorii rapoarte:",
+    "Alege categorie rapoarte:",
     ["Vânzări", "Balanță Stocuri", "Cumparari Intrari", "Plăți Facturi"]
 )
 st.markdown("---")
