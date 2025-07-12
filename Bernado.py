@@ -2,41 +2,25 @@ import streamlit as st
 
 # Configurare pagină
 st.set_page_config(
-    page_title="BRENADO Dashboard",
-    page_icon="🏢",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_title="Brenado For House",
+    layout="wide"
 )
 
-# Sidebar cu logo
-with st.sidebar:
-    st.image("logo.png", width=200)
-    st.title("BRENADO")
-    st.caption("Multi-Business Dashboard")
+# Definirea paginilor cu noua structură st.navigation
+pages = {
+    "Brenado For House": [
+        st.Page("pages/vanzari.py", title="📊 Vânzări"),
+        st.Page("pages/balanta_stocuri.py", title="📦 Balanță Stocuri"),
+        st.Page("pages/balanta_stocuriTest.py", title="📦 Balanță Stocuri test"),
+        st.Page("pages/cumparari_intrari.py", title="🛒 Cumpărări Intrări"),
+        st.Page("pages/facturi_neincasate.py", title="📥 Facturi Neincasate"),
+        st.Page("pages/facturi_neachitate.py", title="❌ Facturi Neachitate"),
+        st.Page("pages/scadente_plati.py", title="⏰ Scadențe Plăți Cu Efecte"),
+    ],
+    "Vanzari Timp Real": [
+        st.Page("pages/BFHFIREBASE_TimpReal.py", Title="Vanzari - Timp Real")
+}
 
-
-# Pagina principală (Home)
-st.image("logo.png", width=200)
-st.title("BRENADO Dashboard")
-st.subheader("Bun venit la sistemul de rapoarte multi-business")
-
-st.markdown("""
-## 📊 Companiile BRENADO
-
-Folosește meniul din stânga pentru a accesa:
-
-- **🏠 BrenadoForHouse** - Segmentul rezidențial
-- **🏗️ BrenadoConstruct** - Segmentul construcții  
-- **⚙️ BrenadoSteel** - Segmentul oțel și metale
-""")
-
-col1, col2, col3 = st.columns(3)
-
-with col1:
-    st.metric("Status", "🟢 Online")
-with col2:
-    st.metric("Pagini", "3")
-with col3:
-    st.metric("Update", "Live")
-
-st.info("💡 Selectează o companie din meniul lateral pentru a vedea rapoartele.")
+# Crearea și rularea navigației
+pg = st.navigation(pages)
+pg.run()
