@@ -12,10 +12,10 @@ st.markdown("### ⏰ Scadențe Plăți Cu Efecte")
 # Încărcare date
 scadente_df = load_scadente_plati()
 
-# Formatare date - convertire la datetime și extragere doar data (fără ora)
+# Formatare date - convertire la datetime și extragere doar data (format YYYY-MM-DD)
 if 'DataScadenta' in scadente_df.columns:
     scadente_df['DataScadenta'] = pd.to_datetime(scadente_df['DataScadenta'])
-    scadente_df['DataScadenta_Formatata'] = scadente_df['DataScadenta'].dt.strftime('%d/%m/%Y')
+    scadente_df['DataScadenta_Formatata'] = scadente_df['DataScadenta'].dt.strftime('%Y-%m-%d')
 
 # Calculare metrici principali
 suma_totala = scadente_df['Suma'].sum() if 'Suma' in scadente_df.columns else 0
