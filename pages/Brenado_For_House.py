@@ -190,17 +190,14 @@ with st.sidebar:
 
 # Header
 st.title("Brenado For House")
-st.subheader("Dashboard pentru segmentul rezidențial")
-
 st.markdown("---")
 
 # Selectare categorie principală
 st.subheader("📂 Selectează Categoria")
 category = st.selectbox(
-    "Alege tipul de raport:",
+    "Alege categorii rapoarte:",
     ["Vânzări", "Balanță Stocuri", "Cumparari Intrari", "Plăți Facturi"]
 )
-
 st.markdown("---")
 
 # ===== Vânzări ===== [ORIGINAL - NESCHIMBAT]
