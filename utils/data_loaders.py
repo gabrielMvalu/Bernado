@@ -54,4 +54,24 @@ def load_neachitate():
             'PL': ['PL 01', 'PL 02']
         })
 
+
+@st.cache_data
+def load_neincasate():
+    """Încarcă datele din Excel - Facturi Neîncasate"""
+    try:
+        df = pd.read_excel("data/FacturiNeincasate.xlsx")
+        return df
+    except:
+        return pd.DataFrame({
+            'Client': ['Client Demo 1', 'Client Demo 2'],
+            'Numar': ['F001', 'F002'],
+            'Data': ['2024-01-01', '2024-01-02'],
+            'DataScadenta': ['2024-01-31', '2024-02-01'],
+            'Total': [5000, 3000],
+            'Sold': [5000, 1500],
+            'Valuta': ['RON', 'RON'],
+            'Serie': ['Demo1', 'Demo2'],
+            'PL': ['PL 01', 'PL 02']
+        })
+
 # TODO: Adăugare alte funcții load_* pentru celelalte pagini
