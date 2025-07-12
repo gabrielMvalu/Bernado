@@ -11,7 +11,6 @@ pages = {
     "Brenado For House": [
         st.Page("pages/vanzari.py", title="📊 Vânzări"),
         st.Page("pages/balanta_stocuri.py", title="📦 Balanță Stocuri"),
-        st.Page("pages/balanta_stocuriTest.py", title="📦 Balanță Stocuri test"),
         st.Page("pages/cumparari_intrari.py", title="🛒 Cumpărări Intrări"),
         st.Page("pages/facturi_neincasate.py", title="📥 Facturi Neincasate"),
         st.Page("pages/facturi_neachitate.py", title="❌ Facturi Neachitate"),
