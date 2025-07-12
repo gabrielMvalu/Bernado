@@ -74,4 +74,26 @@ def load_neincasate():
             'PL': ['PL 01', 'PL 02']
         })
 
+
+@st.cache_data
+def load_scadente_plati():
+    """Încarcă datele din Excel - Scadențe Plăți Cu Efecte"""
+    try:
+        df = pd.read_excel("data/ScadentePlatiCuEfecte.xlsx")
+        return df
+    except:
+        return pd.DataFrame({
+            'Beneficiar': ['Beneficiar Demo 1', 'Beneficiar Demo 2'],
+            'Numar': ['E001', 'E002'],
+            'Data': ['2024-01-01', '2024-01-02'],
+            'DataScadenta': ['2024-01-31', '2024-02-01'],
+            'Valoare': [10000, 15000],
+            'Valuta': ['RON', 'RON'],
+            'TipEfect': ['Cambie', 'Bilet la ordin'],
+            'Serie': ['Demo1', 'Demo2']
+        })
+
+
+
+
 # TODO: Adăugare alte funcții load_* pentru celelalte pagini
