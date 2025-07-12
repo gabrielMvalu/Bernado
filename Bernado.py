@@ -13,8 +13,7 @@ with st.sidebar:
     st.image("logo.png", width=200)
     st.title("BRENADO")
     st.caption("Multi-Business Dashboard")
-    st.markdown("---")
-    st.markdown("**📂 Navighează în paginile din stânga** ⬅️")
+
 
 # Pagina principală (Home)
 st.image("logo.png", width=200)
