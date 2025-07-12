@@ -18,7 +18,7 @@ pages = {
         st.Page("pages/scadente_plati.py", title="⏰ Scadențe Plăți Cu Efecte"),
     ],
     "Vanzari Timp Real": [
-        st.Page("pages/BFHFIREBASE_TimpReal.py", Title="Vanzari - Timp Real")
+        st.Page("pages/BFHFIREBASE_TimpReal.py", title="Vanzari - Timp Real")
     ]
 }
 
