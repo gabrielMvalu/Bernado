@@ -15,13 +15,6 @@ st.markdown("### ❌ Facturi Neachitate")
 # Încărcare date
 neachitate_df = load_neachitate()
 
-# Adăugare coloană AchitatEfecte pentru demo (în realitate va fi în Excel)
-if 'AchitatEfecte' not in neachitate_df.columns:
-    # Simulez coloana AchitatEfecte cu valori random pentru demo
-    import numpy as np
-    np.random.seed(42)
-    neachitate_df['AchitatEfecte'] = np.random.choice([0, 1500, 2000, 0, 3000, 0], len(neachitate_df))
-
 # Conversie DataScadenta la datetime
 if 'DataScadenta' in neachitate_df.columns:
     neachitate_df['DataScadenta'] = pd.to_datetime(neachitate_df['DataScadenta'])
@@ -62,7 +55,7 @@ with col1:
 with col2:
     # Filtru scadențe depășite
     scadenta_filter = st.selectbox(
-        "Filtrează facturi cu scadența depășită:",
+        "Filtrează facturi după scadența:",
         options=["Toate", "Săptămâna Curentă", "Luna Curentă"],
         index=0,
         key="scadenta_filter"
@@ -181,15 +174,11 @@ if not df_efecte.empty:
     st.plotly_chart(fig, use_container_width=True)
     
     # Afișare statistici
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns(2)
     with col1:
         st.metric("Total Efecte", f"{total_efecte:,.0f} RON")
     with col2:
         st.metric("Facturi", f"{len(df_efecte)}")
-    with col3:
-        if total_sold > 0:
-            procent = (total_efecte / total_sold) * 100
-            st.metric("% din Total", f"{procent:.1f}%")
 
 else:
     st.info("Nu există facturi cu Plăți Cu Efecte (AchitatEfecte > 0)")
