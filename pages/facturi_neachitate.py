@@ -130,31 +130,36 @@ if not df_efecte.empty:
     # Nivel 1: Root
     total_efecte = df_efecte['Total'].sum()
     
-    # Nivel 2: Categorii (Azi, Scadență Viitoare, Scadență Depășită)
-    categorii_sume = df_efecte.groupby('Categoria')['Total'].sum()
+    # Nivel 2: Categorii (Azi, Scadență Viitoare, Scadență Depășită) - toate sumele
+    categorii_sume = df_efecte.groupby('Categoria')[['Total', 'Sold', 'AchitatEfecte']].sum()
     
-    # Nivel 3: Furnizori pe fiecare categorie
-    furnizori_categorii = df_efecte.groupby(['Categoria', 'Furnizor'])['Total'].sum()
+    # Nivel 3: Furnizori pe fiecare categorie - toate sumele
+    furnizori_categorii = df_efecte.groupby(['Categoria', 'Furnizor'])[['Total', 'Sold', 'AchitatEfecte']].sum()
+    
+    # Calcul sume totale pentru root
+    total_efecte = df_efecte['Total'].sum()
+    total_sold = df_efecte['Sold'].sum()
+    total_achitat_efecte = df_efecte['AchitatEfecte'].sum()
     
     # Construire liste pentru Sunburst
     ids = ['PLATI_CU_EFECTE']
-    labels = ['PLĂȚI CU EFECTE']  
+    labels = [f'PLĂȚI CU EFECTE<br>Total: {total_efecte:,.0f}<br>Sold: {total_sold:,.0f}<br>Efecte: {total_achitat_efecte:,.0f}']  
     parents = ['']
     values = [total_efecte]
     
     # Adaugă categoriile
-    for categoria, suma in categorii_sume.items():
+    for categoria, row in categorii_sume.iterrows():
         ids.append(f'CAT_{categoria}')
-        labels.append(categoria)
+        labels.append(f'{categoria}<br>Total: {row["Total"]:,.0f}<br>Sold: {row["Sold"]:,.0f}<br>Efecte: {row["AchitatEfecte"]:,.0f}')
         parents.append('PLATI_CU_EFECTE')
-        values.append(suma)
+        values.append(row['Total'])
     
     # Adaugă furnizorii
-    for (categoria, furnizor), suma in furnizori_categorii.items():
+    for (categoria, furnizor), row in furnizori_categorii.iterrows():
         ids.append(f'CAT_{categoria}_FURN_{furnizor}')
-        labels.append(furnizor)
+        labels.append(f'{furnizor}<br>Total: {row["Total"]:,.0f}<br>Sold: {row["Sold"]:,.0f}<br>Efecte: {row["AchitatEfecte"]:,.0f}')
         parents.append(f'CAT_{categoria}')
-        values.append(suma)
+        values.append(row['Total'])
     
     # Creare Sunburst Chart
     fig = go.Figure(go.Sunburst(
