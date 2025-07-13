@@ -1,350 +1,308 @@
 """
-Pagina Balanță Stocuri pentru aplicația Brenado For House
+Pagina Balanță Stocuri pentru aplicația Brenado For House - OPTIMIZATĂ
 Conține 2 subcategorii: La Dată și În Perioadă
 """
 
 import streamlit as st
 import plotly.express as px
 import plotly.graph_objects as go
+import pandas as pd
 from utils.data_loaders import load_balanta_la_data, load_balanta_perioada
 
-# Titlu pagină
+# ===== FUNCȚII HELPER PENTRU REUTILIZARE =====
+
+@st.cache_data
+def calculate_metrics(df, columns):
+    """Calculează metrici pentru coloanele specificate"""
+    metrics = {}
+    for col in columns:
+        metrics[col] = df[col].sum() if col in df.columns else 0
+    return metrics
+
+def safe_column_check(df, column):
+    """Verifică dacă coloana există și returnează valorile unice"""
+    return df[column].unique() if column in df.columns else []
+
+def apply_filters(df, filters_dict):
+    """Aplică multiple filtre pe DataFrame"""
+    filtered_df = df.copy()
+    for column, values in filters_dict.items():
+        if column in df.columns and values:
+            filtered_df = filtered_df[filtered_df[column].isin(values)]
+    return filtered_df
+
+def render_metrics_row(metrics_dict, format_str="{:,.0f} RON"):
+    """Randează o linie de metrici"""
+    cols = st.columns(len(metrics_dict))
+    for i, (label, value) in enumerate(metrics_dict.items()):
+        with cols[i]:
+            st.metric(label, format_str.format(value))
+
+def create_donut_chart(data_df, group_col, value_col, title, unit="unități"):
+    """Creează un donut chart standard"""
+    if data_df.empty:
+        st.info("Nu există date pentru grafic.")
+        return
+    
+    total_value = data_df[value_col].sum()
+    
+    fig = go.Figure(data=[go.Pie(
+        labels=data_df[group_col],
+        values=data_df[value_col],
+        hole=0.4,
+        textinfo='label+value',
+        texttemplate=f'%{{label}}<br>%{{value}} {unit}',
+        textposition='outside',
+        hovertemplate=f'<b>%{{label}}</b><br>{value_col}: %{{value}} {unit}<extra></extra>'
+    )])
+    
+    fig.add_annotation(
+        text=f"<b>Total:<br>{total_value:,.0f} {unit}</b>",
+        x=0.5, y=0.5, font_size=16, showarrow=False
+    )
+    
+    fig.update_layout(
+        title=title, title_x=0.5, height=500,
+        showlegend=True,
+        legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1.05)
+    )
+    
+    return fig
+
+# ===== ÎNCĂRCARE DATE ȘI CONFIGURARE =====
 st.markdown("### 📦 Balanță Stocuri")
+
+# Încărcare date o singură dată
+balanta_df = load_balanta_la_data()
+perioada_df = load_balanta_perioada()
 
 # Tabs pentru subcategoriile Balanță Stocuri
 tab1, tab2, tab3 = st.tabs(["📅 În Dată", "📊 Perioadă", "🔍 Analize Stocuri"])
 
+# ===== TAB 1: BALANȚĂ LA DATĂ =====
 with tab1:
     st.markdown("#### 📅 Balanță Stocuri la Dată")
     
-    # Încărcare date
-    balanta_df = load_balanta_la_data()
+    # Calculare metrici principali
+    metrics_tab1 = calculate_metrics(balanta_df, ['ValoareVanzare', 'ValoareStocFinal'])
     
-    # Calculare metrici
-    total_valoare_vanzare = balanta_df['ValoareVanzare'].sum() if 'ValoareVanzare' in balanta_df.columns else 0
-    total_valoare_stoc_final = balanta_df['ValoareStocFinal'].sum() if 'ValoareStocFinal' in balanta_df.columns else 0
-    
-    # Metrici principale
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Total Valoare Stoc Final", f"{total_valoare_stoc_final:,.0f} RON")
-    with col2:
-        st.metric("Total Valoare Vânzare", f"{total_valoare_vanzare:,.0f} RON")
+    # Afișare metrici
+    render_metrics_row({
+        "Total Valoare Stoc Final": metrics_tab1['ValoareStocFinal'],
+        "Total Valoare Vânzare": metrics_tab1['ValoareVanzare']
+    })
     
     st.markdown("---")
     
-    # Filtrare date - INTERDEPENDENTE
+    # FILTRARE INTERDEPENDENTĂ OPTIMIZATĂ
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        if 'DenumireGest' in balanta_df.columns:
-            gestiune_filter = st.multiselect(
-                "Filtrează după gestiune:",
-                options=balanta_df['DenumireGest'].unique(),
-                default=[],
-                key="gestiune_filter_tab1"
-            )
+        gestiune_options = safe_column_check(balanta_df, 'DenumireGest')
+        gestiune_filter = st.multiselect(
+            "Filtrează după gestiune:",
+            options=gestiune_options,
+            default=[],
+            key="gestiune_filter_tab1"
+        )
     
-    # Filtrare pentru grupa bazată pe gestiunea selectată
-    df_for_grupa = balanta_df.copy()
-    if 'DenumireGest' in balanta_df.columns and gestiune_filter:
-        df_for_grupa = df_for_grupa[df_for_grupa['DenumireGest'].isin(gestiune_filter)]
+    # Filtrare progresivă pentru grupă
+    df_for_grupa = apply_filters(balanta_df, {'DenumireGest': gestiune_filter})
     
     with col2:
-        if 'Grupa' in balanta_df.columns:
-            # Afișează doar grupele din gestiunile selectate
-            grupa_options = df_for_grupa['Grupa'].unique() if not df_for_grupa.empty else []
-            grupa_filter = st.multiselect(
-                "Filtrează după grupă:",
-                options=grupa_options,
-                default=[],
-                key="grupa_filter_tab1"
-            )
+        grupa_options = safe_column_check(df_for_grupa, 'Grupa')
+        grupa_filter = st.multiselect(
+            "Filtrează după grupă:",
+            options=grupa_options,
+            default=[],
+            key="grupa_filter_tab1"
+        )
     
-    # Filtrare pentru produs bazată pe gestiunea și grupa selectate
-    df_for_produs = df_for_grupa.copy()
-    if 'Grupa' in balanta_df.columns and grupa_filter:
-        df_for_produs = df_for_produs[df_for_produs['Grupa'].isin(grupa_filter)]
+    # Filtrare progresivă pentru produs
+    df_for_produs = apply_filters(df_for_grupa, {'Grupa': grupa_filter})
     
     with col3:
-        if 'Denumire' in balanta_df.columns:
-            # Afișează doar produsele din gestiunile și grupele selectate
-            produs_options = df_for_produs['Denumire'].unique() if not df_for_produs.empty else []
-            produs_filter = st.multiselect(
-                "Filtrează după produs:",
-                options=produs_options,
-                default=[],
-                key="produs_filter_tab1"
-            )
+        produs_options = safe_column_check(df_for_produs, 'Denumire')
+        produs_filter = st.multiselect(
+            "Filtrează după produs:",
+            options=produs_options,
+            default=[],
+            key="produs_filter_tab1"
+        )
     
-    # Aplicare filtre
-    filtered_balanta = balanta_df.copy()
-    if 'DenumireGest' in balanta_df.columns and gestiune_filter:
-        filtered_balanta = filtered_balanta[filtered_balanta['DenumireGest'].isin(gestiune_filter)]
-    
-    if 'Grupa' in balanta_df.columns and grupa_filter:
-        filtered_balanta = filtered_balanta[filtered_balanta['Grupa'].isin(grupa_filter)]
-    
-    if 'Denumire' in balanta_df.columns and produs_filter:
-        filtered_balanta = filtered_balanta[filtered_balanta['Denumire'].isin(produs_filter)]
+    # Aplicare toate filtrele
+    filters_tab1 = {
+        'DenumireGest': gestiune_filter,
+        'Grupa': grupa_filter,
+        'Denumire': produs_filter
+    }
+    filtered_balanta = apply_filters(balanta_df, filters_tab1)
     
     # Tabel cu date
     st.dataframe(filtered_balanta, use_container_width=True)
-
-
     
-    # Statistici pentru datele filtrate (doar când s-au aplicat filtre)
-    if not filtered_balanta.empty and (gestiune_filter or grupa_filter or produs_filter):
+    # Statistici filtrate
+    if not filtered_balanta.empty and any(filters_tab1.values()):
         st.markdown("#### 📊 Statistici Date Filtrate")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            valoare_stoc_filtrata = filtered_balanta['ValoareStocFinal'].sum() if 'ValoareStocFinal' in filtered_balanta.columns else 0
-            st.metric("Total Valoare Stoc Final Filtrată", f"{valoare_stoc_filtrata:,.0f} RON")
-        with col2:
-            valoare_vanzare_filtrata = filtered_balanta['ValoareVanzare'].sum() if 'ValoareVanzare' in filtered_balanta.columns else 0
-            st.metric("Total Valoare Vânzare Filtrată", f"{valoare_vanzare_filtrata:,.0f} RON")
+        filtered_metrics = calculate_metrics(filtered_balanta, ['ValoareStocFinal', 'ValoareVanzare'])
+        render_metrics_row({
+            "Total Valoare Stoc Final Filtrată": filtered_metrics['ValoareStocFinal'],
+            "Total Valoare Vânzare Filtrată": filtered_metrics['ValoareVanzare']
+        })
     
-    # Donut Chart pentru stocuri pe gestiuni (doar când se filtrează după produs)
-    if produs_filter and 'Stoc final' in filtered_balanta.columns and 'DenumireGest' in filtered_balanta.columns:
+    # Donut Chart (doar pentru produse selectate)
+    if (produs_filter and 
+        'Stoc final' in filtered_balanta.columns and 
+        'DenumireGest' in filtered_balanta.columns):
+        
         st.markdown("#### 📊 Distribuția Stocului pe Gestiuni")
         
-        # Grupare după gestiune și sumarea stocurilor
-        stoc_pe_gestiune = filtered_balanta.groupby('DenumireGest')['Stoc final'].sum().reset_index()
-        stoc_pe_gestiune = stoc_pe_gestiune[stoc_pe_gestiune['Stoc final'] > 0]  # Doar gestiunile cu stoc
+        stoc_pe_gestiune = (filtered_balanta
+                           .groupby('DenumireGest')['Stoc final']
+                           .sum()
+                           .reset_index())
+        stoc_pe_gestiune = stoc_pe_gestiune[stoc_pe_gestiune['Stoc final'] > 0]
         
         if not stoc_pe_gestiune.empty:
-            # Calculare total pentru centru
-            total_stoc = stoc_pe_gestiune['Stoc final'].sum()
-            
-            # Extragerea unității de măsură pentru produsul selectat
-            if 'UM' in filtered_balanta.columns:
-                um_produs = filtered_balanta['UM'].iloc[0] if not filtered_balanta.empty else "unități"
-            else:
-                um_produs = "unități"
-            
-            # Numele produsului pentru label central
+            um_produs = filtered_balanta['UM'].iloc[0] if 'UM' in filtered_balanta.columns else "unități"
             nume_produs = produs_filter[0] if len(produs_filter) == 1 else "Produse Selectate"
             
-            # Crearea donut chart-ului
-            fig = go.Figure(data=[go.Pie(
-                labels=stoc_pe_gestiune['DenumireGest'],
-                values=stoc_pe_gestiune['Stoc final'],
-                hole=0.4,  # Crează gaura din mijloc pentru donut
-                textinfo='label+value',
-                texttemplate=f'%{{label}}<br>%{{value}} {um_produs}',
-                textposition='outside',
-                hovertemplate=f'<b>%{{label}}</b><br>Stoc: %{{value}} {um_produs}<extra></extra>'
-            )])
-            
-            # Adăugare text în centru cu totalul - DINAMIC
-            fig.add_annotation(
-                text=f"<b>Stoc total:<br>{total_stoc:,.0f} {um_produs}</b>",
-                x=0.5, y=0.5,
-                font_size=16,
-                showarrow=False
+            fig = create_donut_chart(
+                stoc_pe_gestiune, 
+                'DenumireGest', 
+                'Stoc final',
+                f"Distribuția Stocului: {nume_produs} ({um_produs})",
+                um_produs
             )
-            
-            # Configurare layout
-            fig.update_layout(
-                title=f"Distribuția Stocului: {nume_produs} ({um_produs})",
-                title_x=0.5,
-                height=500,
-                showlegend=True,
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="left",
-                    x=1.05
-                )
-            )
-            
-            # Afișare grafic
             st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("Nu există date de stoc pentru produsele filtrate.")
 
-
-
-
+# ===== TAB 2: BALANȚĂ PERIOADĂ =====
 with tab2:
     st.markdown("#### 📊 Balanță Stocuri pe Perioadă")
     
-    # Încărcare date
-    perioada_df = load_balanta_perioada()
+    # Calculare metrici optimizat
+    valoare_intrare = perioada_df['Valoare intrare'].sum() if 'Valoare intrare' in perioada_df.columns else 0
     
-    # Calculare metrici
-    total_valoare_intrare = perioada_df['Valoare intrare'].sum() if 'Valoare intrare' in perioada_df.columns else 0
-    # Calculare total preț vânzare = Stoc final × Preț vânzare pentru fiecare produs
-    if 'Stoc final' in perioada_df.columns and 'Pret vanzare' in perioada_df.columns:
-        total_pret_vanzare = (perioada_df['Stoc final'] * perioada_df['Pret vanzare']).sum()
+    # Calculare preț vânzare optimizat
+    if all(col in perioada_df.columns for col in ['Stoc final', 'Pret vanzare']):
+        pret_vanzare = (perioada_df['Stoc final'] * perioada_df['Pret vanzare']).sum()
     else:
-        total_pret_vanzare = 0
+        pret_vanzare = 0
     
-    # Metrici principale
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.metric("Total Valoare Intrare", f"{total_valoare_intrare:,.0f} RON")
-    with col2:
-        st.metric("Total Preț Vânzare", f"{total_pret_vanzare:,.0f} RON")
+    # Afișare metrici
+    render_metrics_row({
+        "Total Valoare Intrare": valoare_intrare,
+        "Total Preț Vânzare": pret_vanzare
+    })
     
     st.markdown("---")
     
-    # Filtrare date
+    # Filtre tab2 - toate în același loc
     col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        if 'Denumire gestiune' in perioada_df.columns:
-            gestiune_filter = st.multiselect(
-                "Filtrează după gestiune:",
-                options=perioada_df['Denumire gestiune'].unique(),
-                default=[],
-                key="gestiune_filter_tab2"
-            )
+    filter_configs = [
+        (col1, 'Denumire gestiune', "gestiune"),
+        (col2, 'Denumire', "produs"),
+        (col3, 'Furnizor IN', "furnizor"),
+        (col4, 'Producator', "producator")
+    ]
     
-    with col2:
-        if 'Denumire' in perioada_df.columns:
-            produs_filter = st.multiselect(
-                "Filtrează după produs:",
-                options=perioada_df['Denumire'].unique(),
+    filters_tab2 = {}
+    for col_widget, column_name, filter_name in filter_configs:
+        with col_widget:
+            options = safe_column_check(perioada_df, column_name)
+            filters_tab2[column_name] = st.multiselect(
+                f"Filtrează după {filter_name}:",
+                options=options,
                 default=[],
-                key="produs_filter_tab2"
-            )
-    
-    with col3:
-        if 'Furnizor IN' in perioada_df.columns:
-            furnizor_filter = st.multiselect(
-                "Filtrează după furnizor:",
-                options=perioada_df['Furnizor IN'].unique(),
-                default=[],
-                key="furnizor_filter_tab2"
-            )
-    
-    with col4:
-        if 'Producator' in perioada_df.columns:
-            producator_filter = st.multiselect(
-                "Filtrează după producător:",
-                options=perioada_df['Producator'].unique(),
-                default=[],
-                key="producator_filter_tab2"
+                key=f"{filter_name}_filter_tab2"
             )
     
     # Aplicare filtre
-    filtered_perioada = perioada_df.copy()
-    if 'Denumire gestiune' in perioada_df.columns and gestiune_filter:
-        filtered_perioada = filtered_perioada[filtered_perioada['Denumire gestiune'].isin(gestiune_filter)]
-    
-    if 'Denumire' in perioada_df.columns and produs_filter:
-        filtered_perioada = filtered_perioada[filtered_perioada['Denumire'].isin(produs_filter)]
-    
-    if 'Furnizor IN' in perioada_df.columns and furnizor_filter:
-        filtered_perioada = filtered_perioada[filtered_perioada['Furnizor IN'].isin(furnizor_filter)]
-    
-    if 'Producator' in perioada_df.columns and producator_filter:
-        filtered_perioada = filtered_perioada[filtered_perioada['Producator'].isin(producator_filter)]
+    filtered_perioada = apply_filters(perioada_df, filters_tab2)
     
     # Tabel cu date
     st.dataframe(filtered_perioada, use_container_width=True)
     
-    # Statistici pentru datele filtrate
+    # Statistici filtrate
     if not filtered_perioada.empty:
         st.markdown("#### 📊 Statistici Date Filtrate")
-        col1, col2 = st.columns(2)
         
-        with col1:
-            valoare_intrare_filtrata = filtered_perioada['Valoare intrare'].sum() if 'Valoare intrare' in filtered_perioada.columns else 0
-            st.metric("Total Valoare Intrare Filtrată", f"{valoare_intrare_filtrata:,.0f} RON")
-        with col2:
-            # Calculare total preț vânzare filtrat = Stoc final × Preț vânzare pentru datele filtrate
-            if 'Stoc final' in filtered_perioada.columns and 'Pret vanzare' in filtered_perioada.columns:
-                pret_vanzare_filtrat = (filtered_perioada['Stoc final'] * filtered_perioada['Pret vanzare']).sum()
-            else:
-                pret_vanzare_filtrat = 0
-            st.metric("Total Preț Vânzare Filtrat", f"{pret_vanzare_filtrat:,.0f} RON")
+        intrare_filtrata = filtered_perioada['Valoare intrare'].sum() if 'Valoare intrare' in filtered_perioada.columns else 0
+        
+        if all(col in filtered_perioada.columns for col in ['Stoc final', 'Pret vanzare']):
+            pret_vanzare_filtrat = (filtered_perioada['Stoc final'] * filtered_perioada['Pret vanzare']).sum()
+        else:
+            pret_vanzare_filtrat = 0
+        
+        render_metrics_row({
+            "Total Valoare Intrare Filtrată": intrare_filtrata,
+            "Total Preț Vânzare Filtrat": pret_vanzare_filtrat
+        })
 
-
-
-
-
+# ===== TAB 3: ANALIZE - OPTIMIZAT =====
 with tab3:
-    st.markdown("#### 🔍 Analize Stocuri ")
+    st.markdown("#### 🔍 Analize Stocuri")
     
-    # Folosim datele și totalurile deja calculate în tab1
-    analiza_df = balanta_df.copy()  # Folosim aceleași date
+    required_columns = ['DenumireGest', 'Grupa', 'ValoareStocFinal', 'ValoareVanzare']
     
-    if not analiza_df.empty and all(col in analiza_df.columns for col in ['DenumireGest', 'Grupa', 'ValoareStocFinal', 'ValoareVanzare']):
+    if not balanta_df.empty and all(col in balanta_df.columns for col in required_columns):
         
-        # Folosim totalurile deja calculate în tab1
-        # total_valoare_stoc_general = total_valoare_stoc_final (din tab1)
-        # total_valoare_vanzare_general = total_valoare_vanzare (din tab1)
-        
-        # Metrici generale în partea de sus (folosind valorile din tab1)
+        # Refolosim metricii calculați în tab1
         st.markdown("#### 📊 Totaluri Generale")
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Total Valoare Stoc Final", f"{total_valoare_stoc_final:,.0f} RON")
-        with col2:
-            st.metric("Total Valoare Vânzare", f"{total_valoare_vanzare:,.0f} RON")
+        render_metrics_row({
+            "Total Valoare Stoc Final": metrics_tab1['ValoareStocFinal'],
+            "Total Valoare Vânzare": metrics_tab1['ValoareVanzare']
+        })
         
         st.markdown("---")
-        
-        # Vizualizare Treemap ierarhic cu ambele valori
         st.markdown("#### 🗂️ Vizualizare Treemap Ierarhic")
         
-        # Preparare date pentru Treemap ierarhic
-        import pandas as pd
+        # Construire date treemap optimizat
+        grupe_data = (balanta_df
+                     .groupby(['DenumireGest', 'Grupa'])
+                     .agg({'ValoareStocFinal': 'sum', 'ValoareVanzare': 'sum'})
+                     .reset_index())
         
-        # Construire date pentru treemap cu path ierarhic
+        gestiuni_data = (balanta_df
+                        .groupby('DenumireGest')
+                        .agg({'ValoareStocFinal': 'sum', 'ValoareVanzare': 'sum'})
+                        .reset_index())
+        
+        # Construire date treemap
         treemap_data = []
         
-        # Grupe - nivelul cel mai detaliat
-        grupe_data = analiza_df.groupby(['DenumireGest', 'Grupa']).agg({
-            'ValoareStocFinal': 'sum',
-            'ValoareVanzare': 'sum'
-        }).reset_index()
-        
-        for _, grupa in grupe_data.iterrows():
+        # Grupe
+        for _, row in grupe_data.iterrows():
             treemap_data.append({
-                'ids': f"{grupa['DenumireGest']}-{grupa['Grupa']}",
-                'labels': grupa['Grupa'],
-                'parents': grupa['DenumireGest'],
-                'values': grupa['ValoareStocFinal'],
-                'vanzare': grupa['ValoareVanzare'],
-                'niveau': 'grupa'
+                'ids': f"{row['DenumireGest']}-{row['Grupa']}",
+                'labels': row['Grupa'],
+                'parents': row['DenumireGest'],
+                'values': row['ValoareStocFinal'],
+                'vanzare': row['ValoareVanzare']
             })
         
-        # Gestiuni - nivelul intermediar
-        gestiuni_data = analiza_df.groupby('DenumireGest').agg({
-            'ValoareStocFinal': 'sum',
-            'ValoareVanzare': 'sum'
-        }).reset_index()
-        
-        for _, gestiune in gestiuni_data.iterrows():
+        # Gestiuni
+        for _, row in gestiuni_data.iterrows():
             treemap_data.append({
-                'ids': gestiune['DenumireGest'],
-                'labels': gestiune['DenumireGest'],
+                'ids': row['DenumireGest'],
+                'labels': row['DenumireGest'],
                 'parents': 'Brenado For House',
-                'values': gestiune['ValoareStocFinal'],
-                'vanzare': gestiune['ValoareVanzare'],
-                'niveau': 'gestiune'
+                'values': row['ValoareStocFinal'],
+                'vanzare': row['ValoareVanzare']
             })
         
-        # Total - root (folosind totalurile din tab1)
+        # Root
         treemap_data.append({
             'ids': 'Brenado For House',
             'labels': 'Brenado For House',
             'parents': '',
-            'values': total_valoare_stoc_final,  # Din tab1
-            'vanzare': total_valoare_vanzare,    # Din tab1
-            'niveau': 'total'
+            'values': metrics_tab1['ValoareStocFinal'],
+            'vanzare': metrics_tab1['ValoareVanzare']
         })
         
-        # Conversie la DataFrame
+        # Crearea și afișarea treemap
         df_treemap = pd.DataFrame(treemap_data)
         
-        # Crearea Treemap cu go.Figure pentru control complet
         fig = go.Figure(go.Treemap(
             ids=df_treemap['ids'],
             labels=df_treemap['labels'],
@@ -354,18 +312,14 @@ with tab3:
             branchvalues="total",
             maxdepth=3,
             textinfo="label+value",
-            texttemplate="<b>%{label}</b><br>Total_Stoc: %{value:,.0f}<br>Total_Vânzare: %{customdata:,.0f}",
-            hovertemplate='<b>%{label}</b><br>' +
-                         'Stoc Final: %{value:,.0f} RON<br>' +
-                         'Vânzare: %{customdata:,.0f} RON<extra></extra>',
+            texttemplate="<b>%{label}</b><br>Stoc: %{value:,.0f}<br>Vânzare: %{customdata:,.0f}",
+            hovertemplate='<b>%{label}</b><br>Stoc Final: %{value:,.0f} RON<br>Vânzare: %{customdata:,.0f} RON<extra></extra>',
             textposition="middle center",
             textfont_size=11,
-            pathbar_textfont_size=12,
             marker_line_width=2,
             marker_line_color="white"
         ))
         
-        # Layout optimizat pentru treemap
         fig.update_layout(
             height=700,
             title="Analiză Treemap: Brenado For House → Gestiuni → Grupe",
@@ -375,52 +329,28 @@ with tab3:
         )
         
         st.plotly_chart(fig, use_container_width=True)
-
-        # Analiză detaliată pe gestiuni cu ambele valori
+        
+        # Analiză detaliată optimizată
         st.markdown("#### 📊 Analiză Detaliată pe Gestiuni")
-        gestiuni_summary = analiza_df.groupby('DenumireGest').agg({
-            'ValoareStocFinal': 'sum',
-            'ValoareVanzare': 'sum'
-        }).reset_index()
         
-        # Păstrăm valorile numerice pentru metrici
-        gestiuni_summary_numeric = gestiuni_summary.copy()
+        # Formatare și sortare optimizată
+        gestiuni_display = gestiuni_data.sort_values('ValoareStocFinal', ascending=False).copy()
+        gestiuni_display['ValoareStocFinal'] = gestiuni_display['ValoareStocFinal'].apply(lambda x: f"{x:,.0f}")
+        gestiuni_display['ValoareVanzare'] = gestiuni_display['ValoareVanzare'].apply(lambda x: f"{x:,.0f}")
+        gestiuni_display.columns = ['Gestiune', 'Valoare Stoc Final', 'Valoare Vânzare']
         
-        # Rotunjirea valorilor pentru afișare
-        gestiuni_summary['ValoareStocFinal'] = gestiuni_summary['ValoareStocFinal'].round(0).astype(int)
-        gestiuni_summary['ValoareVanzare'] = gestiuni_summary['ValoareVanzare'].round(0).astype(int)
+        st.dataframe(gestiuni_display, use_container_width=True)
         
-        # Sortarea înainte de formatare (pe valori numerice)
-        gestiuni_summary = gestiuni_summary.sort_values('ValoareStocFinal', ascending=False)
-        gestiuni_summary_numeric = gestiuni_summary_numeric.sort_values('ValoareStocFinal', ascending=False)
+        # Metrici sumare
+        top_gestiune = gestiuni_data.iloc[0]
+        render_metrics_row({
+            "Gestiuni": gestiuni_data['DenumireGest'].nunique(),
+            "Valoare Top Stoc": top_gestiune['ValoareStocFinal'],
+            "Valoare Top Vânzare": top_gestiune['ValoareVanzare']
+        })
         
-        # Formatarea cu separatoare de mii după sortare DOAR pentru DataFrame afișat
-        gestiuni_summary_display = gestiuni_summary.copy()
-        gestiuni_summary_display['ValoareStocFinal'] = gestiuni_summary_display['ValoareStocFinal'].apply(lambda x: f"{x:,}")
-        gestiuni_summary_display['ValoareVanzare'] = gestiuni_summary_display['ValoareVanzare'].apply(lambda x: f"{x:,}")
-        
-        gestiuni_summary_display.columns = ['Gestiune', 'Valoare Stoc Final', 'Valoare Vânzare']
-        
-        st.dataframe(gestiuni_summary_display, use_container_width=True)
-        
-        # Metrici sumare - folosind valorile numerice
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            nr_gestiuni = analiza_df['DenumireGest'].nunique()
-            st.metric("Gestiuni", f"{nr_gestiuni}")
-        
-        with col2:
-            gestiune_top = gestiuni_summary_numeric.iloc[0]['DenumireGest']
-            st.metric("Top Gestiune", gestiune_top)
-        
-        with col3:
-            valoare_top_stoc = gestiuni_summary_numeric.iloc[0]['ValoareStocFinal']
-            st.metric("Valoare Top Stoc", f"{valoare_top_stoc:,.0f} RON")
-        
-        with col4:
-            valoare_top_vanzare = gestiuni_summary_numeric.iloc[0]['ValoareVanzare']
-            st.metric("Valoare Top Vânzare", f"{valoare_top_vanzare:,.0f} RON")
+        # Afișare top gestiune ca text
+        st.info(f"🏆 **Top Gestiune:** {top_gestiune['DenumireGest']}")
     
     else:
-        st.warning("Nu sunt disponibile datele necesare pentru analiza Treemap. Verifică că fișierul conține coloanele: DenumireGest, Grupa, ValoareStocFinal, ValoareVanzare.")
+        st.warning("Nu sunt disponibile datele necesare pentru analize. Verifică coloanele: DenumireGest, Grupa, ValoareStocFinal, ValoareVanzare.")
