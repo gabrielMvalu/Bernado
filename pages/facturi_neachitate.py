@@ -53,10 +53,10 @@ with col1:
         )
 
 with col2:
-    # Filtru scadențe depășite
+    # Filtru scadențe 
     scadenta_filter = st.selectbox(
         "Filtrează facturi după scadența:",
-        options=["Toate", "Săptămâna Curentă", "Luna Curentă"],
+        options=["Toate", "Azi", "Săptămâna Curentă", "Luna Curentă"],
         index=0,
         key="scadenta_filter"
     )
@@ -68,22 +68,34 @@ filtered_df = neachitate_df.copy()
 if 'Furnizor' in neachitate_df.columns and furnizor_filter:
     filtered_df = filtered_df[filtered_df['Furnizor'].isin(furnizor_filter)]
 
-# Filtru scadențe depășite
+# Filtru scadențe
 if 'DataScadenta' in neachitate_df.columns and scadenta_filter != "Toate":
     data_curenta = datetime.now().date()
     
-    if scadenta_filter == "Săptămâna Curentă":
+    if scadenta_filter == "Azi":
+        # Facturi care scad azi
+        filtered_df = filtered_df[filtered_df['DataScadenta'].dt.date == data_curenta]
+    
+    elif scadenta_filter == "Săptămâna Curentă":
+        # Începutul și sfârșitul săptămânii curente (luni - duminică)
         start_week = data_curenta - timedelta(days=data_curenta.weekday())
+        end_week = start_week + timedelta(days=6)
         filtered_df = filtered_df[
-            (filtered_df['DataScadenta'].dt.date < data_curenta) & 
-            (filtered_df['DataScadenta'].dt.date >= start_week)
+            (filtered_df['DataScadenta'].dt.date >= start_week) & 
+            (filtered_df['DataScadenta'].dt.date <= end_week)
         ]
     
     elif scadenta_filter == "Luna Curentă":
+        # Începutul și sfârșitul lunii curente
         start_month = data_curenta.replace(day=1)
+        if data_curenta.month == 12:
+            end_month = data_curenta.replace(year=data_curenta.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_month = data_curenta.replace(month=data_curenta.month + 1, day=1) - timedelta(days=1)
+        
         filtered_df = filtered_df[
-            (filtered_df['DataScadenta'].dt.date < data_curenta) & 
-            (filtered_df['DataScadenta'].dt.date >= start_month)
+            (filtered_df['DataScadenta'].dt.date >= start_month) & 
+            (filtered_df['DataScadenta'].dt.date <= end_month)
         ]
 
 # Afișare tabel cu datele filtrate
