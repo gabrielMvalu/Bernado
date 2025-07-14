@@ -163,21 +163,12 @@ if 'Data' in vanzari_df.columns:
         ]
     
     elif date_option == "Interval Personalizat" and date_range is not None:
-        # Debug pentru a vedea tipul date_range
-        st.write(f"Debug: date_range = {date_range}, type = {type(date_range)}")
-        
         if isinstance(date_range, tuple) and len(date_range) == 2:
             start_date, end_date = date_range
-            st.write(f"Debug: start_date = {start_date}, end_date = {end_date}")
             filtered_df = filtered_df[
                 (filtered_df['Data'].dt.date >= start_date) & 
                 (filtered_df['Data'].dt.date <= end_date)
             ]
-        else:
-            # Dacă e o singură dată
-            single_date = date_range
-            st.write(f"Debug: single_date = {single_date}")
-            filtered_df = filtered_df[filtered_df['Data'].dt.date == single_date]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
@@ -192,22 +183,21 @@ if not filtered_df.empty:
     # Afișare DataFrame complet
     st.dataframe(filtered_df, use_container_width=True, height=400)
     
-    # Statistici pentru datele filtrate (doar dacă s-au aplicat filtre)
-    if len(filtered_df) < len(vanzari_df):
-        st.markdown("#### 📊 Statistici Date Filtrate")
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
-            st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
-        with col2:
-            total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
-            st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
-        with col3:
-            total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
-            st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
-        with col4:
-            st.metric("Înregistrări", f"{len(filtered_df):,}")
+    # Afișez întotdeauna statisticile când sunt aplicate filtre
+    st.markdown("#### 📊 Statistici Date Filtrate")
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
+        st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
+    with col2:
+        total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
+        st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
+    with col3:
+        total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
+        st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+    with col4:
+        st.metric("Înregistrări", f"{len(filtered_df):,}")
 
 else:
     st.warning("Nu s-au găsit înregistrări cu filtrele selectate")
