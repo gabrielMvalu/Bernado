@@ -181,8 +181,6 @@ if 'Denumire' in vanzari_df.columns and produs_filter:
 
 # Afișare rezultate
 if not filtered_df.empty:
-    st.info(f"🔍 Găsite: **{len(filtered_df):,}** înregistrări din {len(vanzari_df):,} totale")
-    
     # Sortare după dată
     if 'Data' in filtered_df.columns:
         filtered_df = filtered_df.sort_values('Data', ascending=False)
@@ -206,5 +204,6 @@ if not filtered_df.empty:
             st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
         with col4:
             st.metric("Înregistrări", f"{len(filtered_df):,}")
+            
 else:
     st.warning("⚠️ Nu s-au găsit înregistrări cu filtrele selectate")
