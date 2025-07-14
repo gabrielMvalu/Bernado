@@ -273,14 +273,22 @@ with tab2:
         
         # 5. Scatter Plot - Preț vs Cantitate
         if all(col in vanzari_df.columns for col in ['Pret', 'Cantitate', 'Valoare']):
+            # Creez o copie pentru a gestiona valorile negative
+            scatter_df = vanzari_df.copy()
+            # Adaug o coloană pentru a identifica retururile
+            scatter_df['Tip_Tranzactie'] = scatter_df['Cantitate'].apply(lambda x: 'Retur' if x < 0 else 'Vânzare')
+            # Folosesc valoarea absolută pentru size (plotly nu acceptă negative)
+            scatter_df['Size_Abs'] = abs(scatter_df['Cantitate'])
+            
             fig = px.scatter(
-                vanzari_df,
+                scatter_df,
                 x='Pret',
                 y='Cantitate',
-                size='Valoare',
-                color='DenumireGestiune' if 'DenumireGestiune' in vanzari_df.columns else None,
-                title="Corelația Preț vs Cantitate (mărimea = Valoare)",
-                hover_data=['Denumire'] if 'Denumire' in vanzari_df.columns else None
+                size='Size_Abs',
+                color='Tip_Tranzactie',
+                title="Corelația Preț vs Cantitate (Vânzări vs Retururi)",
+                hover_data=['Denumire'] if 'Denumire' in scatter_df.columns else None,
+                color_discrete_map={'Vânzare': 'blue', 'Retur': 'red'}
             )
             st.plotly_chart(fig, use_container_width=True)
         
@@ -294,14 +302,22 @@ with tab2:
         with col1:
             # 6. Bubble Chart - Marja de profit
             if all(col in vanzari_df.columns for col in ['Valoare', 'Adaos', 'Cantitate']):
+                # Creez o copie pentru a gestiona valorile negative
+                profit_df = vanzari_df.copy()
+                # Identific tipul de tranzacție
+                profit_df['Tip_Tranzactie'] = profit_df['Cantitate'].apply(lambda x: 'Retur' if x < 0 else 'Vânzare')
+                # Folosesc valoarea absolută pentru size
+                profit_df['Size_Abs'] = abs(profit_df['Cantitate'])
+                
                 fig = px.scatter(
-                    vanzari_df,
+                    profit_df,
                     x='Valoare',
                     y='Adaos',
-                    size='Cantitate',
-                    color='Denumire grupa' if 'Denumire grupa' in vanzari_df.columns else None,
-                    title="Marja de Profit (Valoare vs Adaos)",
-                    hover_data=['Denumire'] if 'Denumire' in vanzari_df.columns else None
+                    size='Size_Abs',
+                    color='Tip_Tranzactie',
+                    title="Marja de Profit (Valoare vs Adaos) - Vânzări vs Retururi",
+                    hover_data=['Denumire'] if 'Denumire' in profit_df.columns else None,
+                    color_discrete_map={'Vânzare': 'green', 'Retur': 'red'}
                 )
                 st.plotly_chart(fig, use_container_width=True)
         
@@ -357,7 +373,77 @@ with tab2:
         
         st.markdown("---")
         
-        # ===== SECȚIUNEA 5: PRODUCĂTORI =====
+        # ===== SECȚIUNEA 6: ANALIZA RETURURILOR =====
+        st.markdown("### 🔄 Analiza Retururilor")
+        
+        # Filtrez doar retururile (cantități negative)
+        if 'Cantitate' in vanzari_df.columns:
+            retururi_df = vanzari_df[vanzari_df['Cantitate'] < 0].copy()
+            
+            if not retururi_df.empty:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Metrici retururi
+                    total_retururi_valoare = retururi_df['Valoare'].sum() if 'Valoare' in retururi_df.columns else 0
+                    nr_retururi = len(retururi_df)
+                    
+                    st.metric("Valoare Totală Retururi", f"{abs(total_retururi_valoare):,.0f} RON")
+                    st.metric("Număr Retururi", f"{nr_retururi:,}")
+                    
+                    # Top produse returnate
+                    if 'Denumire' in retururi_df.columns:
+                        top_retururi = retururi_df.groupby('Denumire')['Cantitate'].sum().nsmallest(10).reset_index()
+                        top_retururi['Cantitate'] = abs(top_retururi['Cantitate'])  # Fac pozitiv pentru afișare
+                        
+                        fig = px.bar(
+                            top_retururi,
+                            x='Cantitate',
+                            y='Denumire',
+                            orientation='h',
+                            title="Top 10 Produse Returnate",
+                            color_discrete_sequence=['red']
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                
+                with col2:
+                    # Retururi pe gestiuni
+                    if 'DenumireGestiune' in retururi_df.columns:
+                        retururi_gestiuni = retururi_df.groupby('DenumireGestiune')['Valoare'].sum().reset_index()
+                        retururi_gestiuni['Valoare'] = abs(retururi_gestiuni['Valoare'])
+                        
+                        fig = px.pie(
+                            retururi_gestiuni,
+                            values='Valoare',
+                            names='DenumireGestiune',
+                            title="Distribuția Retururilor pe Gestiuni",
+                            color_discrete_sequence=px.colors.sequential.Reds_r
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                    
+                    # Retururi în timp
+                    if 'Data' in retururi_df.columns:
+                        retururi_df_copy = retururi_df.copy()
+                        retururi_df_copy['Data_Str'] = retururi_df_copy['Data'].dt.strftime('%Y-%m-%d')
+                        retururi_zilnic = retururi_df_copy.groupby('Data_Str')['Valoare'].sum().reset_index()
+                        retururi_zilnic['Valoare'] = abs(retururi_zilnic['Valoare'])
+                        
+                        fig = px.line(
+                            retururi_zilnic,
+                            x='Data_Str',
+                            y='Valoare',
+                            title="Evoluția Retururilor în Timp",
+                            color_discrete_sequence=['red']
+                        )
+                        fig.update_xaxes(title="Data")
+                        fig.update_yaxes(title="Valoare Retururi")
+                        st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Nu au fost găsite retururi în perioada analizată.")
+        
+        st.markdown("---")
+        
+        # ===== SECȚIUNEA 7: PRODUCĂTORI =====
         st.markdown("### 🏭 Analiza Producătorilor")
         
         # 10. Market share producători
