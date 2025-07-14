@@ -147,33 +147,16 @@ if 'Agent' in vanzari_df.columns and selected_agent != 'Toți':
     filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
 
 # Filtru dată
-if 'Data' in vanzari_df.columns:
-    today = datetime.now().date()
-    
-    if date_option == "Azi":
-        # Filtrare pentru ziua curentă
-        filtered_df = filtered_df[filtered_df['Data'].dt.date == today]
-    
-    elif date_option == "Luna Curentă":
-        # Filtrare pentru luna curentă
-        current_month = today.month
-        current_year = today.year
+if 'Data' in vanzari_df.columns and date_range:
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_date, end_date = date_range
         filtered_df = filtered_df[
-            (filtered_df['Data'].dt.month == current_month) & 
-            (filtered_df['Data'].dt.year == current_year)
+            (filtered_df['Data'].dt.date >= start_date) & 
+            (filtered_df['Data'].dt.date <= end_date)
         ]
-    
-    elif date_option == "Interval Personalizat" and 'date_range' in locals():
-        # Filtrare pentru intervalul personalizat
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            start_date, end_date = date_range
-            filtered_df = filtered_df[
-                (filtered_df['Data'].dt.date >= start_date) & 
-                (filtered_df['Data'].dt.date <= end_date)
-            ]
-        else:
-            selected_date_obj = date_range
-            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
+    else:
+        selected_date_obj = date_range
+        filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
@@ -181,6 +164,7 @@ if 'Denumire' in vanzari_df.columns and produs_filter:
 
 # Afișare rezultate
 if not filtered_df.empty:
+    st.info(f"🔍 Găsite: **{len(filtered_df):,}** înregistrări din {len(vanzari_df):,} totale")
     
     # Sortare după dată
     if 'Data' in filtered_df.columns:
