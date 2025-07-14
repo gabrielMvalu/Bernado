@@ -103,27 +103,24 @@ with col2:
 with col3:
     if 'Data' in vanzari_df.columns:
         vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
+        min_date = vanzari_df['Data'].min().date()
+        max_date = vanzari_df['Data'].max().date()
+        today = datetime.now().date()
         
-        # Radio buttons pentru tipul de filtrare
-        date_option = st.radio(
-            "📅 Perioada:",
-            ["Azi", "Luna Curentă", "Interval Personalizat"],
-            horizontal=True,
-            key="date_option"
+        if today > max_date:
+            default_date = max_date
+        elif today < min_date:
+            default_date = min_date
+        else:
+            default_date = today
+        
+        date_range = st.date_input(
+            "📅 Interval date:",
+            value=(default_date, default_date),
+            min_value=min_date,
+            max_value=max_date,
+            format="DD/MM/YYYY"
         )
-        
-        # Dată personalizată doar dacă este selectată
-        if date_option == "Interval Personalizat":
-            min_date = vanzari_df['Data'].min().date()
-            max_date = vanzari_df['Data'].max().date()
-            
-            date_range = st.date_input(
-                "Selectează intervalul:",
-                value=(min_date, max_date),
-                min_value=min_date,
-                max_value=max_date,
-                format="DD/MM/YYYY"
-            )
 
 with col4:
     # Filtru produs
