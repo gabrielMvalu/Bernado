@@ -163,12 +163,21 @@ if 'Data' in vanzari_df.columns:
         ]
     
     elif date_option == "Interval Personalizat" and date_range is not None:
+        # Debug pentru a vedea tipul date_range
+        st.write(f"Debug: date_range = {date_range}, type = {type(date_range)}")
+        
         if isinstance(date_range, tuple) and len(date_range) == 2:
             start_date, end_date = date_range
+            st.write(f"Debug: start_date = {start_date}, end_date = {end_date}")
             filtered_df = filtered_df[
                 (filtered_df['Data'].dt.date >= start_date) & 
                 (filtered_df['Data'].dt.date <= end_date)
             ]
+        else:
+            # Dacă e o singură dată
+            single_date = date_range
+            st.write(f"Debug: single_date = {single_date}")
+            filtered_df = filtered_df[filtered_df['Data'].dt.date == single_date]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
