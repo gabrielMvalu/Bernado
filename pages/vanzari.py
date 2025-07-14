@@ -103,28 +103,24 @@ with col2:
 with col3:
     if 'Data' in vanzari_df.columns:
         vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
+        min_date = vanzari_df['Data'].min().date()
+        max_date = vanzari_df['Data'].max().date()
+        today = datetime.now().date()
         
-        # Radio buttons pentru tipul de filtrare
-        date_option = st.radio(
-            "📅 Perioada:",
-            ["Azi", "Luna Curentă", "Interval Personalizat"],
-            horizontal=True,
-            key="date_option"
+        if today > max_date:
+            default_date = max_date
+        elif today < min_date:
+            default_date = min_date
+        else:
+            default_date = today
+        
+        date_range = st.date_input(
+            "📅 Interval date:",
+            value=(default_date, default_date),
+            min_value=min_date,
+            max_value=max_date,
+            format="DD/MM/YYYY"
         )
-        
-        # Dată personalizată doar dacă este selectată
-        date_range = None
-        if date_option == "Interval Personalizat":
-            min_date = vanzari_df['Data'].min().date()
-            max_date = vanzari_df['Data'].max().date()
-            
-            date_range = st.date_input(
-                "Selectează intervalul:",
-                value=(min_date, max_date),
-                min_value=min_date,
-                max_value=max_date,
-                format="DD/MM/YYYY"
-            )
 
 with col4:
     # Filtru produs
@@ -148,27 +144,16 @@ if 'Agent' in vanzari_df.columns and selected_agent != 'Toți':
     filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
 
 # Filtru dată
-if 'Data' in vanzari_df.columns:
-    today = datetime.now().date()
-    
-    if date_option == "Azi":
-        filtered_df = filtered_df[filtered_df['Data'].dt.date == today]
-    
-    elif date_option == "Luna Curentă":
-        current_month = today.month
-        current_year = today.year
+if 'Data' in vanzari_df.columns and date_range:
+    if isinstance(date_range, tuple) and len(date_range) == 2:
+        start_date, end_date = date_range
         filtered_df = filtered_df[
-            (filtered_df['Data'].dt.month == current_month) & 
-            (filtered_df['Data'].dt.year == current_year)
+            (filtered_df['Data'].dt.date >= start_date) & 
+            (filtered_df['Data'].dt.date <= end_date)
         ]
-    
-    elif date_option == "Interval Personalizat" and date_range is not None:
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            start_date, end_date = date_range
-            filtered_df = filtered_df[
-                (filtered_df['Data'].dt.date >= start_date) & 
-                (filtered_df['Data'].dt.date <= end_date)
-            ]
+    else:
+        selected_date_obj = date_range
+        filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
@@ -176,29 +161,39 @@ if 'Denumire' in vanzari_df.columns and produs_filter:
 
 # Afișare rezultate
 if not filtered_df.empty:
-    # Sortare după dată
-    if 'Data' in filtered_df.columns:
-        filtered_df = filtered_df.sort_values('Data', ascending=False)
+    st.info(f"🔍 Găsite: **{len(filtered_df):,}** înregistrări din {len(vanzari_df):,} totale")
     
-    # Afișare DataFrame complet
-    st.dataframe(filtered_df, use_container_width=True, height=400)
+    # Selectare coloane pentru afișare
+    display_columns = [
+        'Data', 'Client', 'Denumire', 'Cantitate', 'Valoare', 
+        'Adaos', 'Agent', 'DenumireGestiune', 'Cod', 'UM'
+    ]
+    available_columns = [col for col in display_columns if col in filtered_df.columns]
     
-    # Statistici pentru datele filtrate (doar dacă s-au aplicat filtre)
-    if len(filtered_df) < len(vanzari_df):
-        st.markdown("#### 📊 Statistici Date Filtrate")
-        col1, col2, col3, col4 = st.columns(4)
+    if available_columns:
+        # Sortare după dată
+        if 'Data' in filtered_df.columns:
+            filtered_df = filtered_df.sort_values('Data', ascending=False)
         
-        with col1:
-            total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
-            st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
-        with col2:
-            total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
-            st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
-        with col3:
-            total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
-            st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
-        with col4:
-            st.metric("Înregistrări", f"{len(filtered_df):,}")
-
+        st.dataframe(filtered_df[available_columns], use_container_width=True, height=400)
+        
+        # Statistici pentru datele filtrate
+        if len(filtered_df) < len(vanzari_df):
+            st.markdown("#### 📊 Statistici Date Filtrate")
+            col1, col2, col3, col4 = st.columns(4)
+            
+            with col1:
+                total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
+                st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
+            with col2:
+                total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
+                st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
+            with col3:
+                total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
+                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+            with col4:
+                st.metric("Înregistrări", f"{len(filtered_df):,}")
+    else:
+        st.warning("Nu există coloane disponibile pentru afișare")
 else:
-    st.warning("Nu s-au găsit înregistrări cu filtrele selectate")
+    st.warning("⚠️ Nu s-au găsit înregistrări cu filtrele selectate")
