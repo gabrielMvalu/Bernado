@@ -103,24 +103,27 @@ with col2:
 with col3:
     if 'Data' in vanzari_df.columns:
         vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
-        min_date = vanzari_df['Data'].min().date()
-        max_date = vanzari_df['Data'].max().date()
-        today = datetime.now().date()
         
-        if today > max_date:
-            default_date = max_date
-        elif today < min_date:
-            default_date = min_date
-        else:
-            default_date = today
-        
-        date_range = st.date_input(
-            "📅 Interval date:",
-            value=(default_date, default_date),
-            min_value=min_date,
-            max_value=max_date,
-            format="DD/MM/YYYY"
+        # Radio buttons pentru tipul de filtrare
+        date_option = st.radio(
+            "📅 Perioada:",
+            ["Azi", "Luna Curentă", "Interval Personalizat"],
+            horizontal=True,
+            key="date_option"
         )
+        
+        # Dată personalizată doar dacă este selectată
+        if date_option == "Interval Personalizat":
+            min_date = vanzari_df['Data'].min().date()
+            max_date = vanzari_df['Data'].max().date()
+            
+            date_range = st.date_input(
+                "Selectează intervalul:",
+                value=(min_date, max_date),
+                min_value=min_date,
+                max_value=max_date,
+                format="DD/MM/YYYY"
+            )
 
 with col4:
     # Filtru produs
@@ -144,16 +147,33 @@ if 'Agent' in vanzari_df.columns and selected_agent != 'Toți':
     filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
 
 # Filtru dată
-if 'Data' in vanzari_df.columns and date_range:
-    if isinstance(date_range, tuple) and len(date_range) == 2:
-        start_date, end_date = date_range
+if 'Data' in vanzari_df.columns:
+    today = datetime.now().date()
+    
+    if date_option == "Azi":
+        # Filtrare pentru ziua curentă
+        filtered_df = filtered_df[filtered_df['Data'].dt.date == today]
+    
+    elif date_option == "Luna Curentă":
+        # Filtrare pentru luna curentă
+        current_month = today.month
+        current_year = today.year
         filtered_df = filtered_df[
-            (filtered_df['Data'].dt.date >= start_date) & 
-            (filtered_df['Data'].dt.date <= end_date)
+            (filtered_df['Data'].dt.month == current_month) & 
+            (filtered_df['Data'].dt.year == current_year)
         ]
-    else:
-        selected_date_obj = date_range
-        filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
+    
+    elif date_option == "Interval Personalizat" and 'date_range' in locals():
+        # Filtrare pentru intervalul personalizat
+        if isinstance(date_range, tuple) and len(date_range) == 2:
+            start_date, end_date = date_range
+            filtered_df = filtered_df[
+                (filtered_df['Data'].dt.date >= start_date) & 
+                (filtered_df['Data'].dt.date <= end_date)
+            ]
+        else:
+            selected_date_obj = date_range
+            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
