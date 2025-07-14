@@ -113,6 +113,7 @@ with col3:
         )
         
         # Dată personalizată doar dacă este selectată
+        date_range = None
         if date_option == "Interval Personalizat":
             min_date = vanzari_df['Data'].min().date()
             max_date = vanzari_df['Data'].max().date()
@@ -151,11 +152,9 @@ if 'Data' in vanzari_df.columns:
     today = datetime.now().date()
     
     if date_option == "Azi":
-        # Filtrare pentru ziua curentă
         filtered_df = filtered_df[filtered_df['Data'].dt.date == today]
     
     elif date_option == "Luna Curentă":
-        # Filtrare pentru luna curentă
         current_month = today.month
         current_year = today.year
         filtered_df = filtered_df[
@@ -163,17 +162,13 @@ if 'Data' in vanzari_df.columns:
             (filtered_df['Data'].dt.year == current_year)
         ]
     
-    elif date_option == "Interval Personalizat" and 'date_range' in locals():
-        # Filtrare pentru intervalul personalizat
+    elif date_option == "Interval Personalizat" and date_range is not None:
         if isinstance(date_range, tuple) and len(date_range) == 2:
             start_date, end_date = date_range
             filtered_df = filtered_df[
                 (filtered_df['Data'].dt.date >= start_date) & 
                 (filtered_df['Data'].dt.date <= end_date)
             ]
-        else:
-            selected_date_obj = date_range
-            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
 # Filtru produs
 if 'Denumire' in vanzari_df.columns and produs_filter:
@@ -185,10 +180,10 @@ if not filtered_df.empty:
     if 'Data' in filtered_df.columns:
         filtered_df = filtered_df.sort_values('Data', ascending=False)
     
-    # Afișare tot DataFrame-ul
+    # Afișare DataFrame complet
     st.dataframe(filtered_df, use_container_width=True, height=400)
     
-    # Statistici pentru datele filtrate
+    # Statistici pentru datele filtrate (doar dacă s-au aplicat filtre)
     if len(filtered_df) < len(vanzari_df):
         st.markdown("#### 📊 Statistici Date Filtrate")
         col1, col2, col3, col4 = st.columns(4)
@@ -204,6 +199,6 @@ if not filtered_df.empty:
             st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
         with col4:
             st.metric("Înregistrări", f"{len(filtered_df):,}")
-            
+
 else:
-    st.warning("⚠️ Nu s-au găsit înregistrări cu filtrele selectate")
+    st.warning("⚠️ Nu s-au găsit înregistrări cu filtrele selectate
