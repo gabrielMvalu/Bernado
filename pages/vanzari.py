@@ -236,23 +236,7 @@ def render_data_tables(df):
     else:
         st.warning("Nu există coloane disponibile pentru afișare")
 
-def render_sidebar(df):
-    """Randează sidebar-ul cu informații"""
-    with st.sidebar:
-        # Informații sistem
-        st.subheader("ℹ️ Informații Sistem")
-        st.info(f"🕒 Ultimul refresh: {datetime.now().strftime('%H:%M:%S')}")
-        
-        # Status date
-        st.subheader("📊 Status Date")
-        if not df.empty:
-            st.success("✅ Date încărcate")
-            if 'Data' in df.columns:
-                min_date = df['Data'].min().strftime('%d/%m/%Y')
-                max_date = df['Data'].max().strftime('%d/%m/%Y')
-                st.info(f"📅 Perioada: {min_date} - {max_date}")
-        else:
-            st.error("❌ Date indisponibile")
+
 
 # ===== FUNCȚIA PRINCIPALĂ =====
 
@@ -288,10 +272,8 @@ def main():
     st.markdown("---")
     st.markdown("*Dashboard generat automat din datele Excel • Brenado For House ERP*")
 
-# ===== RULARE PAGINĂ =====
 
 if __name__ == "__main__":
     main()
 else:
-    # Când este importat ca pagină în aplicația principală
     main()
