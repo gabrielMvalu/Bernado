@@ -96,4 +96,30 @@ def load_scadente_plati():
 
 
 
+@st.cache_data
+def load_vanzari():
+    """Încarcă datele din Excel - Vânzări"""
+    try:
+        df = pd.read_excel("data/VS.xlsx")
+
+        
+        return df
+    except Exception as e:
+        # Date demo în caz de eroare
+        return pd.DataFrame({
+            'Data': pd.to_datetime(['2024-07-01', '2024-07-02', '2024-07-03']),
+            'Client': ['Client Demo 1', 'Client Demo 2', 'Client Demo 3'],
+            'Denumire': ['Produs Demo A', 'Produs Demo B', 'Produs Demo C'],
+            'Cantitate': [10, 5, 15],
+            'Valoare': [1000, 500, 1500],
+            'Adaos': [100, 50, 150],
+            'Agent': ['Agent Demo 1', 'Agent Demo 1', 'Agent Demo 2'],
+            'DenumireGestiune': ['Gestiune Demo 1', 'Gestiune Demo 2', 'Gestiune Demo 1'],
+            'Cod': ['P001', 'P002', 'P003'],
+            'UM': ['buc', 'buc', 'buc']
+        })
+
+
+
+
 # TODO: Adăugare alte funcții load_* pentru celelalte pagini
