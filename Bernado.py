@@ -15,9 +15,6 @@ pages = {
         st.Page("pages/facturi_neincasate.py", title="📥 Facturi Neincasate"),
         st.Page("pages/facturi_neachitate.py", title="❌ Facturi Neachitate"),
         st.Page("pages/scadente_plati.py", title="⏰ Scadențe Plăți Cu Efecte"),
-    ],
-    "Vanzari Timp Real": [
-        st.Page("pages/BFHFIREBASE_TimpReal.py", title="Vanzari - Timp Real")
     ]
 }
 
