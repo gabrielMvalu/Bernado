@@ -98,7 +98,7 @@ with tab1:
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        gestiune_options = safe_column_check(balanta_df, 'Denumire gestiune')
+        gestiune_options = safe_column_check(balanta_df, 'DenumireGest')
         gestiune_filter = st.multiselect(
             "Filtrează după gestiune:",
             options=gestiune_options,
@@ -107,7 +107,7 @@ with tab1:
         )
     
     # Filtrare progresivă pentru grupă
-    df_for_grupa = apply_filters(balanta_df, {Denumire gestiune': gestiune_filter})
+    df_for_grupa = apply_filters(balanta_df, {'DenumireGest': gestiune_filter})
     
     with col2:
         grupa_options = safe_column_check(df_for_grupa, 'Grupa')
@@ -200,7 +200,7 @@ with tab2:
     # Filtre tab2 - toate în același loc
     col1, col2, col3, col4 = st.columns(4)
     filter_configs = [
-        (col1, 'Denumire gestiune', "Denumire gestiune"),
+        (col1, 'Denumire gestiune', "gestiune"),
         (col2, 'Denumire', "produs"),
         (col3, 'Furnizor IN', "furnizor"),
         (col4, 'Producator', "producator")
