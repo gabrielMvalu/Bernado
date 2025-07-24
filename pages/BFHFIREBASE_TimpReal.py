@@ -3,7 +3,7 @@ Brenado For House - Dashboard Firebase în Timp Real
 Autor: Castemill SRL
 Data: Iulie 2025
 """
-
+"""
 import streamlit as st
 import pandas as pd
 import firebase_admin
@@ -443,3 +443,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+"""
