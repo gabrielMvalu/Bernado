@@ -293,107 +293,234 @@ with tab1:
 with tab2:
     st.subheader("📊 Analize Avansate")
     
-    import pandas as pd
-    import streamlit as st
-    import plotly.express as px
-    import plotly.graph_objects as go
-    from datetime import datetime
-
     # Încărcare date YTD
     @st.cache_data
     def load_ytd_data():
+        """Încarcă datele YTD din Excel"""
         try:
             df = pd.read_excel("data/YTD.xlsx")
-            df['Data'] = pd.to_datetime(df['Data'])
+            if 'Data' in df.columns:
+                df['Data'] = pd.to_datetime(df['Data'])
             return df
         except Exception as e:
-            st.warning(f"Fișierul nu a fost găsit sau are probleme. Se încarcă date demo: {e}")
-            # Date demo
-            dates_2024 = pd.date_range("2024-07-01", "2024-07-31")
-            dates_2025 = pd.date_range("2025-07-01", "2025-07-26")
-            data = pd.DataFrame({
-                "Data": list(dates_2024) + list(dates_2025),
-                "Valoare": [1000 + i*10 for i in range(len(dates_2024))] + [1200 + i*12 for i in range(len(dates_2025))]
-            })
-            return data
-
-    df = load_ytd_data()
+            st.error(f"Nu s-au putut încărca datele YTD: {e}")
+            # Date demo pentru testare
+            dates_2024 = pd.date_range(start='2024-06-01', end='2024-12-31', freq='D')
+            dates_2025 = pd.date_range(start='2025-01-01', end='2025-07-26', freq='D')
+            
+            demo_data = []
+            for i, date in enumerate(dates_2024):
+                demo_data.append({'Data': date, 'Valoare': 800 + i*30 + np.random.randint(-100, 100)})
+            for i, date in enumerate(dates_2025):
+                demo_data.append({'Data': date, 'Valoare': 1000 + i*40 + np.random.randint(-100, 100)})
+                
+            return pd.DataFrame(demo_data)
     
-    if df.empty or 'Data' not in df.columns or 'Valoare' not in df.columns:
-        st.error("Datele nu sunt valide sau lipsesc coloanele necesare.")
-    else:
-        df = df.sort_values("Data")
-        df['An'] = df['Data'].dt.year
-        df['Lună'] = df['Data'].dt.month
-
-        # Perioade disponibile
-        ani = df['An'].unique()
-        azi = pd.Timestamp("today").normalize()
-        luna_curenta = azi.month
-        anul_curent = azi.year
-
-        # Checkbox comparație
-        show_comparison = st.checkbox("📊 Compară luna curentă cu anul trecut")
-
-        # Filtrare lună curentă și, opțional, luna similară din anul trecut
-        df_current = df[(df['An'] == anul_curent) & (df['Lună'] == luna_curenta)]
-        df_previous = df[(df['An'] == anul_curent - 1) & (df['Lună'] == luna_curenta)]
-
-        # Grafic
-        fig = go.Figure()
-
-        if show_comparison and not df_previous.empty:
-            # Date ajustate pt. aliniere (doar ziua)
-            df_previous['Data_Adjusted'] = df_previous['Data'].apply(lambda x: x.replace(year=anul_curent))
+    ytd_df = load_ytd_data()
+    
+    if not ytd_df.empty and 'Data' in ytd_df.columns and 'Valoare' in ytd_df.columns:
+        # Grupare vânzări pe zi
+        daily_sales_ytd = ytd_df.groupby(ytd_df['Data'].dt.date)['Valoare'].sum().reset_index()
+        daily_sales_ytd.columns = ['Data', 'Valoare']
+        daily_sales_ytd['Data'] = pd.to_datetime(daily_sales_ytd['Data'])
+        
+        # Obținem data de azi și luna curentă
+        today = datetime.now()
+        current_month = today.month
+        current_year = 2025
+        comparison_year = 2024
+        
+        # Filtrăm doar luna curentă până în ziua de azi pentru 2025
+        current_period_data = daily_sales_ytd[
+            (daily_sales_ytd['Data'].dt.year == current_year) & 
+            (daily_sales_ytd['Data'].dt.month == current_month) &
+            (daily_sales_ytd['Data'].dt.day <= today.day)
+        ]
+        
+        # Filtrăm aceeași perioadă din 2024 (aceeași lună, până în aceeași zi)
+        comparison_period_data = daily_sales_ytd[
+            (daily_sales_ytd['Data'].dt.year == comparison_year) & 
+            (daily_sales_ytd['Data'].dt.month == current_month) &
+            (daily_sales_ytd['Data'].dt.day <= today.day)
+        ]
+        
+        # Verificăm dacă avem date pentru comparație
+        has_comparison_data = len(comparison_period_data) > 0
+        
+        # CHECKBOX pentru comparația cu 2024
+        if has_comparison_data:
+            show_comparison = st.checkbox(
+                f"📊 Compară cu {calendar.month_name[current_month]} 2024 (aceeași perioadă)", 
+                value=True
+            )
+        else:
+            show_comparison = False
+            st.info(f"Nu sunt date disponibile pentru {calendar.month_name[current_month]} 2024")
+        
+        # CREAREA GRAFICULUI
+        if show_comparison and has_comparison_data:
+            # Grafic cu comparația
+            fig = go.Figure()
+            
+            # Linia pentru 2025 (continuă, albastră)
             fig.add_trace(go.Scatter(
-                x=df_previous['Data_Adjusted'],
-                y=df_previous['Valoare'],
+                x=current_period_data['Data'],
+                y=current_period_data['Valoare'],
                 mode='lines+markers',
-                name=f"{anul_curent - 1}",
-                line=dict(dash='dash', color='orange'),
-                opacity=0.6
+                name=f'{calendar.month_name[current_month]} 2025',
+                line=dict(color='#1f77b4', width=3),
+                marker=dict(size=6)
             ))
-
-        if not df_current.empty:
+            
+            # Linia pentru 2024 (punctată, portocalie) - ajustată pentru suprapunere
+            comparison_adjusted = comparison_period_data.copy()
+            comparison_adjusted['Data_Adjusted'] = comparison_adjusted['Data'].apply(
+                lambda x: x.replace(year=current_year)
+            )
+            
             fig.add_trace(go.Scatter(
-                x=df_current['Data'],
-                y=df_current['Valoare'],
+                x=comparison_adjusted['Data_Adjusted'],
+                y=comparison_adjusted['Valoare'],
                 mode='lines+markers',
-                name=f"{anul_curent}",
-                line=dict(color='blue'),
+                name=f'{calendar.month_name[current_month]} 2024',
+                line=dict(color='#ff7f0e', width=3, dash='dash'),
+                marker=dict(size=6),
+                opacity=0.8
             ))
-
-        # Range Selector
+            
+            title = f'📈 {calendar.month_name[current_month]} 2025 vs {calendar.month_name[current_month]} 2024 (până în {today.day})'
+            
+        else:
+            # Grafic normal doar cu 2025
+            fig = px.line(
+                current_period_data, 
+                x='Data', 
+                y='Valoare',
+                title=f'📈 Vânzări {calendar.month_name[current_month]} 2025 (până în {today.day})',
+                markers=True
+            )
+            fig.update_traces(line=dict(width=3, color='#1f77b4'), marker=dict(size=6))
+        
+        # Layout grafic
         fig.update_layout(
-            title="📈 Vânzări Zilnice",
-            xaxis=dict(
-                rangeselector=dict(
-                    buttons=list([
-                        dict(count=1, label="1 Lună", step="month", stepmode="backward"),
-                        dict(count=3, label="3 Luni", step="month", stepmode="backward"),
-                        dict(count=1, label="YTD", step="year", stepmode="todate"),
-                        dict(step="all", label="Toate")
-                    ])
-                ),
-                rangeslider=dict(visible=True),
-                type="date"
-            ),
+            height=600,
+            xaxis_title="Data",
             yaxis_title="Valoare Vânzări (RON)",
-            hovermode="x unified",
-            height=600
+            hovermode='x unified',
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1
+            )
         )
-
+        
+        # Afișare grafic
         st.plotly_chart(fig, use_container_width=True)
-
-        # Statistici (pe întreg setul de date, nu doar luna curentă)
-        total = df['Valoare'].sum()
-        medie = df['Valoare'].mean()
-        best_row = df[df['Valoare'] == df['Valoare'].max()].iloc[0]
-
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.metric("💰 Total Vânzări", f"{total:,.0f} RON")
-        with col2:
-            st.metric("📉 Media Zilnică", f"{medie:,.0f} RON")
-        with col3:
-            st.metric("🏆 Cea mai bună zi", f"{best_row['Valoare']:,.0f} RON", best_row['Data'].strftime('%d %b %Y'))
+        
+        # STATISTICI
+        st.markdown("---")
+        st.subheader("📈 Statistici")
+        
+        if show_comparison and has_comparison_data:
+            # Statistici cu comparație
+            col1, col2, col3, col4 = st.columns(4)
+            
+            current_total = current_period_data['Valoare'].sum()
+            comparison_total = comparison_period_data['Valoare'].sum()
+            difference = current_total - comparison_total
+            
+            with col1:
+                st.metric(
+                    "💰 Total 2025", 
+                    f"{current_total:,.0f} RON",
+                    delta=f"{difference:,.0f} RON"
+                )
+            
+            with col2:
+                st.metric(
+                    "💰 Total 2024", 
+                    f"{comparison_total:,.0f} RON"
+                )
+            
+            with col3:
+                if len(current_period_data) > 0:
+                    current_avg = current_period_data['Valoare'].mean()
+                    comparison_avg = comparison_period_data['Valoare'].mean()
+                    avg_diff = current_avg - comparison_avg
+                    st.metric(
+                        "📊 Media zilnică 2025", 
+                        f"{current_avg:,.0f} RON",
+                        delta=f"{avg_diff:,.0f} RON"
+                    )
+                else:
+                    st.metric("📊 Media zilnică 2025", "0 RON")
+            
+            with col4:
+                if len(comparison_period_data) > 0:
+                    comparison_avg = comparison_period_data['Valoare'].mean()
+                    st.metric("📊 Media zilnică 2024", f"{comparison_avg:,.0f} RON")
+                else:
+                    st.metric("📊 Media zilnică 2024", "0 RON")
+                
+            # Rândul 2 de statistici
+            col5, col6, col7, col8 = st.columns(4)
+            
+            with col5:
+                if len(current_period_data) > 0:
+                    best_day_2025 = current_period_data.loc[current_period_data['Valoare'].idxmax()]
+                    st.metric("🏆 Cea mai bună zi 2025", f"{best_day_2025['Valoare']:,.0f} RON")
+                else:
+                    st.metric("🏆 Cea mai bună zi 2025", "0 RON")
+            
+            with col6:
+                if len(comparison_period_data) > 0:
+                    best_day_2024 = comparison_period_data.loc[comparison_period_data['Valoare'].idxmax()]
+                    st.metric("🏆 Cea mai bună zi 2024", f"{best_day_2024['Valoare']:,.0f} RON")
+                else:
+                    st.metric("🏆 Cea mai bună zi 2024", "0 RON")
+            
+            with col7:
+                # Procentaj creștere/scădere
+                if comparison_total > 0:
+                    percent_change = ((current_total - comparison_total) / comparison_total) * 100
+                    st.metric(
+                        "📈 Schimbare (%)", 
+                        f"{percent_change:+.1f}%",
+                        delta=f"{percent_change:+.1f}%"
+                    )
+                else:
+                    st.metric("📈 Schimbare (%)", "N/A")
+            
+            with col8:
+                # Numărul de zile comparat
+                days_2025 = len(current_period_data)
+                days_2024 = len(comparison_period_data)
+                st.metric("📅 Zile comparate", f"{min(days_2025, days_2024)} zile")
+                
+        else:
+            # Statistici normale doar pentru 2025
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                total = current_period_data['Valoare'].sum()
+                st.metric("💰 Total", f"{total:,.0f} RON")
+            
+            with col2:
+                if len(current_period_data) > 0:
+                    avg = current_period_data['Valoare'].mean()
+                    st.metric("📊 Media zilnică", f"{avg:,.0f} RON")
+                else:
+                    st.metric("📊 Media zilnică", "0 RON")
+            
+            with col3:
+                if len(current_period_data) > 0:
+                    best_day = current_period_data.loc[current_period_data['Valoare'].idxmax()]
+                    st.metric("🏆 Cea mai bună zi", f"{best_day['Valoare']:,.0f} RON")
+                else:
+                    st.metric("🏆 Cea mai bună zi", "0 RON")
+    
+    else:
+        st.error("❌ Fișierul YTD.xlsx nu există sau nu conține coloanele Data și Valoare")
+        st.info("💡 Verifică că fișierul se află în folderul data/ și conține coloanele corecte")
