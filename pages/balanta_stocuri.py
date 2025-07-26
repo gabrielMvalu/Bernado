@@ -69,12 +69,25 @@ def create_donut_chart(data_df, group_col, value_col, title, unit="unități"):
     
     return fig
 
+def filter_and_display_table(df, columns_to_show):
+    """Filtrează și afișează doar coloanele specificate"""
+    available_columns = [col for col in columns_to_show if col in df.columns]
+    
+    if available_columns:
+        return df[available_columns]
+    else:
+        st.warning(f"Coloanele cerute nu sunt disponibile în date: {columns_to_show}")
+        return df
+
 # ===== ÎNCĂRCARE DATE ȘI CONFIGURARE =====
 st.markdown("### 📦 Balanță Stocuri")
 
 # Încărcare date o singură dată
 balanta_df = load_balanta_la_data()
 perioada_df = load_balanta_perioada()
+
+# Definire coloane pentru afișarea restrânsă
+COLUMNS_TO_SHOW = ['DenumireGest', 'Denumire', 'UM', 'Pret', 'Stoc final', 'PretVanzare', 'Producator']
 
 # Tabs pentru subcategoriile Balanță Stocuri
 tab1, tab2, tab3 = st.tabs(["📅 În Dată", "📊 Perioadă", "🔍 Analize Stocuri"])
@@ -94,7 +107,7 @@ with tab1:
     
     st.markdown("---")
     
-    # FILTRARE INTERDEPENDENTĂ OPTIMIZATĂ
+    # FILTRARE INTERDEPENDENTĂ OPTIMIZATĂ - cu Producător în loc de Grupă
     col1, col2, col3 = st.columns(3)
     
     with col1:
@@ -106,20 +119,20 @@ with tab1:
             key="gestiune_filter_tab1"
         )
     
-    # Filtrare progresivă pentru grupă
-    df_for_grupa = apply_filters(balanta_df, {'DenumireGest': gestiune_filter})
+    # Filtrare progresivă pentru producător (în loc de grupă)
+    df_for_producator = apply_filters(balanta_df, {'DenumireGest': gestiune_filter})
     
     with col2:
-        grupa_options = safe_column_check(df_for_grupa, 'Grupa')
-        grupa_filter = st.multiselect(
-            "Filtrează după grupă:",
-            options=grupa_options,
+        producator_options = safe_column_check(df_for_producator, 'Producator')
+        producator_filter = st.multiselect(
+            "Filtrează după producător:",
+            options=producator_options,
             default=[],
-            key="grupa_filter_tab1"
+            key="producator_filter_tab1"
         )
     
     # Filtrare progresivă pentru produs
-    df_for_produs = apply_filters(df_for_grupa, {'Grupa': grupa_filter})
+    df_for_produs = apply_filters(df_for_producator, {'Producator': producator_filter})
     
     with col3:
         produs_options = safe_column_check(df_for_produs, 'Denumire')
@@ -133,13 +146,15 @@ with tab1:
     # Aplicare toate filtrele
     filters_tab1 = {
         'DenumireGest': gestiune_filter,
-        'Grupa': grupa_filter,
+        'Producator': producator_filter,
         'Denumire': produs_filter
     }
     filtered_balanta = apply_filters(balanta_df, filters_tab1)
     
-    # Tabel cu date
-    st.dataframe(filtered_balanta, use_container_width=True)
+    # Filtrare și afișare tabel cu coloane restrânse
+    st.markdown("#### 📋 Date Stocuri")
+    table_data = filter_and_display_table(filtered_balanta, COLUMNS_TO_SHOW)
+    st.dataframe(table_data, use_container_width=True)
     
     # Statistici filtrate
     if not filtered_balanta.empty and any(filters_tab1.values()):
@@ -220,8 +235,13 @@ with tab2:
     # Aplicare filtre
     filtered_perioada = apply_filters(perioada_df, filters_tab2)
     
-    # Tabel cu date
-    st.dataframe(filtered_perioada, use_container_width=True)
+    # Definire coloane pentru tab2 (perioada)
+    COLUMNS_TO_SHOW_PERIOADA = ['Denumire gestiune', 'Denumire', 'UM', 'Pret vanzare', 'Stoc final', 'Valoare intrare', 'Producator']
+    
+    # Tabel cu date restrânse
+    st.markdown("#### 📋 Date Perioada")
+    table_data_perioada = filter_and_display_table(filtered_perioada, COLUMNS_TO_SHOW_PERIOADA)
+    st.dataframe(table_data_perioada, use_container_width=True)
     
     # Statistici filtrate
     if not filtered_perioada.empty:
@@ -243,7 +263,7 @@ with tab2:
 with tab3:
     st.markdown("#### 🔍 Analize Stocuri")
     
-    required_columns = ['DenumireGest', 'Grupa', 'ValoareStocFinal', 'ValoareVanzare']
+    required_columns = ['DenumireGest', 'Producator', 'ValoareStocFinal', 'ValoareVanzare']
     
     if not balanta_df.empty and all(col in balanta_df.columns for col in required_columns):
         
@@ -257,11 +277,11 @@ with tab3:
         st.markdown("---")
         st.markdown("#### 🗂️ Vizualizare Treemap Ierarhic")
         
-        # Construire date treemap optimizat
-        grupe_data = (balanta_df
-                     .groupby(['DenumireGest', 'Grupa'])
-                     .agg({'ValoareStocFinal': 'sum', 'ValoareVanzare': 'sum'})
-                     .reset_index())
+        # Construire date treemap optimizat - cu Producator în loc de Grupa
+        producatori_data = (balanta_df
+                           .groupby(['DenumireGest', 'Producator'])
+                           .agg({'ValoareStocFinal': 'sum', 'ValoareVanzare': 'sum'})
+                           .reset_index())
         
         gestiuni_data = (balanta_df
                         .groupby('DenumireGest')
@@ -271,11 +291,11 @@ with tab3:
         # Construire date treemap
         treemap_data = []
         
-        # Grupe
-        for _, row in grupe_data.iterrows():
+        # Producători
+        for _, row in producatori_data.iterrows():
             treemap_data.append({
-                'ids': f"{row['DenumireGest']}-{row['Grupa']}",
-                'labels': row['Grupa'],
+                'ids': f"{row['DenumireGest']}-{row['Producator']}",
+                'labels': row['Producator'],
                 'parents': row['DenumireGest'],
                 'values': row['ValoareStocFinal'],
                 'vanzare': row['ValoareVanzare']
@@ -322,7 +342,7 @@ with tab3:
         
         fig.update_layout(
             height=700,
-            title="Analiză Treemap: Brenado For House → Gestiuni → Grupe",
+            title="Analiză Treemap: Brenado For House → Gestiuni → Producători",
             title_x=0.5,
             font_size=11,
             margin=dict(t=60, l=10, r=10, b=10)
@@ -353,4 +373,4 @@ with tab3:
         st.info(f"🏆 **Top Gestiune:** {top_gestiune['DenumireGest']}")
     
     else:
-        st.warning("Nu sunt disponibile datele necesare pentru analize. Verifică coloanele: DenumireGest, Grupa, ValoareStocFinal, ValoareVanzare.")
+        st.warning("Nu sunt disponibile datele necesare pentru analize. Verifică coloanele: DenumireGest, Producator, ValoareStocFinal, ValoareVanzare.")
