@@ -92,115 +92,176 @@ with tab1:
     # Date detaliate cu filtre
     st.subheader("📋 Date Detaliate")
 
-    # Filtre
-    col1, col2, col3, col4 = st.columns(4)
+    # Radio buttons pentru tipul de afișare
+    view_type = st.radio(
+        "Selectează tipul de afișare:",
+        options=["Standard", "Zi și Clienți", "Top Produse"],
+        horizontal=True,
+        key="view_type_radio"
+    )
 
-    with col1:
-        if 'DenumireGestiune' in vanzari_df.columns:
-            gestiuni_list = ['Toate'] + list(vanzari_df['DenumireGestiune'].unique())
-            selected_gestiune = st.selectbox("Gestiune:", gestiuni_list)
+    # Filtre - doar pentru Standard
+    if view_type == "Standard":
+        col1, col2, col3, col4 = st.columns(4)
 
-    with col2:
-        if 'Agent' in vanzari_df.columns:
-            agenti_list = ['Toți'] + list(vanzari_df['Agent'].unique())
-            selected_agent = st.selectbox("Agent:", agenti_list)
+        with col1:
+            if 'DenumireGestiune' in vanzari_df.columns:
+                gestiuni_list = ['Toate'] + list(vanzari_df['DenumireGestiune'].unique())
+                selected_gestiune = st.selectbox("Gestiune:", gestiuni_list)
 
-    with col3:
-        if 'Data' in vanzari_df.columns:
-            vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
-            min_date = vanzari_df['Data'].min().date()
-            max_date = vanzari_df['Data'].max().date()
-            today = datetime.now().date()
-            
-            if today > max_date:
-                default_date = max_date
-            elif today < min_date:
-                default_date = min_date
+        with col2:
+            if 'Agent' in vanzari_df.columns:
+                agenti_list = ['Toți'] + list(vanzari_df['Agent'].unique())
+                selected_agent = st.selectbox("Agent:", agenti_list)
+
+        with col3:
+            if 'Data' in vanzari_df.columns:
+                vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
+                min_date = vanzari_df['Data'].min().date()
+                max_date = vanzari_df['Data'].max().date()
+                today = datetime.now().date()
+                
+                if today > max_date:
+                    default_date = max_date
+                elif today < min_date:
+                    default_date = min_date
+                else:
+                    default_date = today
+                
+                date_range = st.date_input(
+                    "📅 Interval date:",
+                    value=(default_date, default_date),
+                    min_value=min_date,
+                    max_value=max_date,
+                    format="DD/MM/YYYY"
+                )
+
+        with col4:
+            # Filtru produs
+            if 'Denumire' in vanzari_df.columns:
+                produs_filter = st.multiselect(
+                    "Filtrează după produs:",
+                    options=vanzari_df['Denumire'].unique(),
+                    default=[],
+                    key="produs_filter"
+                )
+
+        # Aplicare filtre pentru Standard
+        filtered_df = vanzari_df.copy()
+
+        # Filtru gestiune
+        if 'DenumireGestiune' in vanzari_df.columns and selected_gestiune != 'Toate':
+            filtered_df = filtered_df[filtered_df['DenumireGestiune'] == selected_gestiune]
+
+        # Filtru agent
+        if 'Agent' in vanzari_df.columns and selected_agent != 'Toți':
+            filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
+
+        # Filtru dată
+        if 'Data' in vanzari_df.columns and date_range:
+            if isinstance(date_range, tuple) and len(date_range) == 2:
+                start_date, end_date = date_range
+                filtered_df = filtered_df[
+                    (filtered_df['Data'].dt.date >= start_date) & 
+                    (filtered_df['Data'].dt.date <= end_date)
+                ]
             else:
-                default_date = today
-            
-            date_range = st.date_input(
-                "📅 Interval date:",
-                value=(default_date, default_date),
-                min_value=min_date,
-                max_value=max_date,
-                format="DD/MM/YYYY"
-            )
+                selected_date_obj = date_range
+                filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
-    with col4:
         # Filtru produs
-        if 'Denumire' in vanzari_df.columns:
-            produs_filter = st.multiselect(
-                "Filtrează după produs:",
-                options=vanzari_df['Denumire'].unique(),
-                default=[],
-                key="produs_filter"
-            )
+        if 'Denumire' in vanzari_df.columns and produs_filter:
+            filtered_df = filtered_df[filtered_df['Denumire'].isin(produs_filter)]
 
-    # Aplicare filtre
-    filtered_df = vanzari_df.copy()
+    else:
+        # Pentru alte view-uri, folosește toate datele fără filtre
+        filtered_df = vanzari_df.copy()
 
-    # Filtru gestiune
-    if 'DenumireGestiune' in vanzari_df.columns and selected_gestiune != 'Toate':
-        filtered_df = filtered_df[filtered_df['DenumireGestiune'] == selected_gestiune]
-
-    # Filtru agent
-    if 'Agent' in vanzari_df.columns and selected_agent != 'Toți':
-        filtered_df = filtered_df[filtered_df['Agent'] == selected_agent]
-
-    # Filtru dată
-    if 'Data' in vanzari_df.columns and date_range:
-        if isinstance(date_range, tuple) and len(date_range) == 2:
-            start_date, end_date = date_range
-            filtered_df = filtered_df[
-                (filtered_df['Data'].dt.date >= start_date) & 
-                (filtered_df['Data'].dt.date <= end_date)
-            ]
+    # Procesare date în funcție de tipul de view selectat
+    if view_type == "Standard":
+        # Afișare standard - toate coloanele
+        display_df = filtered_df.copy()
+        if 'Data' in display_df.columns:
+            display_df = display_df.sort_values('Data', ascending=False)
+        
+    elif view_type == "Zi și Clienți":
+        # Grupare pe Data și Client
+        if all(col in filtered_df.columns for col in ['Data', 'Client', 'Valoare', 'Adaos']):
+            display_df = filtered_df.groupby(['Data', 'Client']).agg({
+                'Valoare': 'sum',
+                'Adaos': 'sum'
+            }).reset_index()
+            display_df = display_df.sort_values('Data', ascending=False)
         else:
-            selected_date_obj = date_range
-            filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
-
-    # Filtru produs
-    if 'Denumire' in vanzari_df.columns and produs_filter:
-        filtered_df = filtered_df[filtered_df['Denumire'].isin(produs_filter)]
+            st.warning("Coloanele necesare (Data, Client, Valoare, Adaos) nu sunt disponibile")
+            display_df = pd.DataFrame()
+            
+    elif view_type == "Top Produse":
+        # Afișare doar coloanele specificate
+        required_columns = ['Denumire', 'Cantitate', 'Valoare', 'Adaos']
+        available_columns = [col for col in required_columns if col in filtered_df.columns]
+        
+        if available_columns:
+            display_df = filtered_df[available_columns].copy()
+        else:
+            st.warning("Coloanele necesare (Denumire, Cantitate, Valoare, Adaos) nu sunt disponibile")
+            display_df = pd.DataFrame()
 
     # Afișare rezultate
-    if not filtered_df.empty:
-        # Sortare după dată
-        if 'Data' in filtered_df.columns:
-            filtered_df = filtered_df.sort_values('Data', ascending=False)
-        
-        # Afișare DataFrame complet
-        st.dataframe(
-            filtered_df, 
-            use_container_width=True, 
-            height=400,
-            column_config={
+    if not display_df.empty:
+        # Configurare column_config în funcție de view type
+        if view_type == "Standard" and 'Data' in display_df.columns:
+            column_config = {
                 "Data": st.column_config.DatetimeColumn(
                     "Data",
                     format="DD/MM/YYYY"
                 )
             }
+        elif view_type == "Zi și Clienți" and 'Data' in display_df.columns:
+            column_config = {
+                "Data": st.column_config.DatetimeColumn(
+                    "Data",
+                    format="DD/MM/YYYY"
+                )
+            }
+        else:
+            column_config = None
+        
+        # Afișare DataFrame
+        st.dataframe(
+            display_df, 
+            use_container_width=True, 
+            height=400,
+            column_config=column_config
         )
         
-        # Afișez întotdeauna statisticile când sunt aplicate filtre
-        st.markdown("#### 📊 Statistici Date Filtrate")
+        # Afișez statisticile
+        st.markdown("#### 📊 Statistici")
         col1, col2, col3, col4 = st.columns(4)
         
         with col1:
-            total_valoare = filtered_df['Valoare'].sum() if 'Valoare' in filtered_df.columns else 0
+            total_valoare = display_df['Valoare'].sum() if 'Valoare' in display_df.columns else 0
             st.metric("Total Valoare", f"{total_valoare:,.0f} RON")
         with col2:
-            total_adaos = filtered_df['Adaos'].sum() if 'Adaos' in filtered_df.columns else 0
+            total_adaos = display_df['Adaos'].sum() if 'Adaos' in display_df.columns else 0
             st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
         with col3:
-            total_cantitate = filtered_df['Cantitate'].sum() if 'Cantitate' in filtered_df.columns else 0
-            st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+            if view_type == "Top Produse" and 'Cantitate' in display_df.columns:
+                total_cantitate = display_df['Cantitate'].sum()
+                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+            elif view_type == "Standard" and 'Cantitate' in display_df.columns:
+                total_cantitate = display_df['Cantitate'].sum()
+                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
+            else:
+                st.metric("Înregistrări", f"{len(display_df):,}")
         with col4:
-            st.metric("Înregistrări", f"{len(filtered_df):,}")
+            st.metric("Înregistrări", f"{len(display_df):,}")
 
     else:
-        st.warning("Nu s-au găsit înregistrări cu filtrele selectate")
+        if view_type == "Standard":
+            st.warning("Nu s-au găsit înregistrări cu filtrele selectate")
+        else:
+            st.warning("Nu sunt date disponibile pentru acest tip de afișare")
 
 # ===== TAB 2: ANALIZE AVANSATE =====
 with tab2:
