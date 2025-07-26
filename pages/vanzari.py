@@ -287,190 +287,86 @@ with tab1:
         else:
             st.warning("Nu sunt date disponibile pentru acest tip de afișare")
 
+
+
 # ===== TAB 2: ANALIZE AVANSATE =====
 with tab2:
     st.subheader("📊 Analize Avansate")
     
+    import pandas as pd
+    import streamlit as st
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from datetime import datetime
+
     # Încărcare date YTD
     @st.cache_data
     def load_ytd_data():
-        """Încarcă datele YTD din Excel"""
         try:
             df = pd.read_excel("data/YTD.xlsx")
-            if 'Data' in df.columns:
-                df['Data'] = pd.to_datetime(df['Data'])
+            df['Data'] = pd.to_datetime(df['Data'])
             return df
         except Exception as e:
-            st.error(f"Nu s-au putut încărca datele YTD: {e}")
-            # Date demo pentru testare
-            dates_2024 = pd.date_range(start='2024-06-01', end='2024-12-31', freq='D')
-            dates_2025 = pd.date_range(start='2025-01-01', end='2025-07-26', freq='D')
-            
-            demo_data = []
-            for i, date in enumerate(dates_2024):
-                demo_data.append({'Data': date, 'Valoare': 800 + i*30 + np.random.randint(-100, 100)})
-            for i, date in enumerate(dates_2025):
-                demo_data.append({'Data': date, 'Valoare': 1000 + i*40 + np.random.randint(-100, 100)})
-                
-            return pd.DataFrame(demo_data)
+            st.warning(f"Fișierul nu a fost găsit sau are probleme. Se încarcă date demo: {e}")
+            # Date demo
+            dates_2024 = pd.date_range("2024-07-01", "2024-07-31")
+            dates_2025 = pd.date_range("2025-07-01", "2025-07-26")
+            data = pd.DataFrame({
+                "Data": list(dates_2024) + list(dates_2025),
+                "Valoare": [1000 + i*10 for i in range(len(dates_2024))] + [1200 + i*12 for i in range(len(dates_2025))]
+            })
+            return data
+
+    df = load_ytd_data()
     
-    ytd_df = load_ytd_data()
-    
-    if not ytd_df.empty and 'Data' in ytd_df.columns and 'Valoare' in ytd_df.columns:
-        # Grupare vânzări pe zi
-        daily_sales_ytd = ytd_df.groupby(ytd_df['Data'].dt.date)['Valoare'].sum().reset_index()
-        daily_sales_ytd.columns = ['Data', 'Valoare']
-        daily_sales_ytd['Data'] = pd.to_datetime(daily_sales_ytd['Data'])
-        
-        # Obținem luna și anul curent
-        today = datetime.now()
-        current_month = today.month
-        current_year = today.year
-        previous_year = current_year - 1
-        
-        # Verificăm dacă avem date pentru anul trecut în aceeași lună
-        current_month_data = daily_sales_ytd[
-            (daily_sales_ytd['Data'].dt.year == current_year) & 
-            (daily_sales_ytd['Data'].dt.month == current_month)
-        ]
-        
-        previous_month_data = daily_sales_ytd[
-            (daily_sales_ytd['Data'].dt.year == previous_year) & 
-            (daily_sales_ytd['Data'].dt.month == current_month)
-        ]
-        
-        # CHECKBOX pentru comparația cu aceeași lună din anul trecut
-        has_previous_month_data = len(previous_month_data) > 0
-        
-        if has_previous_month_data:
-            show_monthly_comparison = st.checkbox(
-                f"📊 Compară {calendar.month_name[current_month]} {current_year} cu {calendar.month_name[current_month]} {previous_year}", 
-                value=False
-            )
-        else:
-            show_monthly_comparison = False
-            st.info(f"Comparația va fi disponibilă când vor exista date pentru {calendar.month_name[current_month]} {previous_year}")
-        
-        # PERIOD SELECTOR
-        col1, col2 = st.columns([3, 1])
-        with col2:
-            period_options = ["Toate", "YTD", "3 Luni", "1 Lună"]
-            if show_monthly_comparison:
-                period_options.append("Doar comparația lunară")
-            selected_period = st.selectbox("📅 Perioada:", period_options, index=0)
-        
-        # Filtrarea datelor bazat pe perioada selectată
-        if selected_period == "1 Lună":
-            start_date = today - timedelta(days=30)
-            filtered_data = daily_sales_ytd[daily_sales_ytd['Data'] >= start_date]
-        elif selected_period == "3 Luni":
-            start_date = today - timedelta(days=90)
-            filtered_data = daily_sales_ytd[daily_sales_ytd['Data'] >= start_date]
-        elif selected_period == "YTD":
-            start_date = datetime(current_year, 1, 1)
-            filtered_data = daily_sales_ytd[daily_sales_ytd['Data'] >= start_date]
-        elif selected_period == "Doar comparația lunară" and show_monthly_comparison:
-            # Afișăm doar luna curentă și luna din anul trecut
-            filtered_data = pd.concat([current_month_data, previous_month_data])
-        else:  # "Toate"
-            filtered_data = daily_sales_ytd
-        
-        # CREAREA GRAFICULUI
-        if show_monthly_comparison and has_previous_month_data and selected_period != "Doar comparația lunară":
-            # Grafic cu comparația lunară inclusă în perioada selectată
-            fig = go.Figure()
-            
-            # Adăugăm toate datele filtrate ca linie principală
+    if df.empty or 'Data' not in df.columns or 'Valoare' not in df.columns:
+        st.error("Datele nu sunt valide sau lipsesc coloanele necesare.")
+    else:
+        df = df.sort_values("Data")
+        df['An'] = df['Data'].dt.year
+        df['Lună'] = df['Data'].dt.month
+
+        # Perioade disponibile
+        ani = df['An'].unique()
+        azi = pd.Timestamp("today").normalize()
+        luna_curenta = azi.month
+        anul_curent = azi.year
+
+        # Checkbox comparație
+        show_comparison = st.checkbox("📊 Compară luna curentă cu anul trecut")
+
+        # Filtrare lună curentă și, opțional, luna similară din anul trecut
+        df_current = df[(df['An'] == anul_curent) & (df['Lună'] == luna_curenta)]
+        df_previous = df[(df['An'] == anul_curent - 1) & (df['Lună'] == luna_curenta)]
+
+        # Grafic
+        fig = go.Figure()
+
+        if show_comparison and not df_previous.empty:
+            # Date ajustate pt. aliniere (doar ziua)
+            df_previous['Data_Adjusted'] = df_previous['Data'].apply(lambda x: x.replace(year=anul_curent))
             fig.add_trace(go.Scatter(
-                x=filtered_data['Data'],
-                y=filtered_data['Valoare'],
+                x=df_previous['Data_Adjusted'],
+                y=df_previous['Valoare'],
                 mode='lines+markers',
-                name=f'Vânzări {current_year}',
-                line=dict(color='#1f77b4', width=2),
-                marker=dict(size=4)
+                name=f"{anul_curent - 1}",
+                line=dict(dash='dash', color='orange'),
+                opacity=0.6
             ))
-            
-            # Adăugăm luna din anul trecut (ajustată pentru suprapunere)
-            if len(previous_month_data) > 0:
-                previous_adjusted = previous_month_data.copy()
-                previous_adjusted['Data_Adjusted'] = previous_adjusted['Data'].apply(
-                    lambda x: x.replace(year=current_year)
-                )
-                
-                fig.add_trace(go.Scatter(
-                    x=previous_adjusted['Data_Adjusted'],
-                    y=previous_adjusted['Valoare'],
-                    mode='lines+markers',
-                    name=f'{calendar.month_name[current_month]} {previous_year}',
-                    line=dict(color='#ff7f0e', width=3, dash='dash'),
-                    marker=dict(size=5),
-                    opacity=0.8
-                ))
-            
-            title = f'📈 Vânzări - {selected_period} (cu comparația {calendar.month_name[current_month]})'
-            
-        elif show_monthly_comparison and selected_period == "Doar comparația lunară":
-            # Grafic doar cu comparația lunară
-            fig = go.Figure()
-            
-            # Luna curentă
+
+        if not df_current.empty:
             fig.add_trace(go.Scatter(
-                x=current_month_data['Data'],
-                y=current_month_data['Valoare'],
+                x=df_current['Data'],
+                y=df_current['Valoare'],
                 mode='lines+markers',
-                name=f'{calendar.month_name[current_month]} {current_year}',
-                line=dict(color='#1f77b4', width=3),
-                marker=dict(size=6)
+                name=f"{anul_curent}",
+                line=dict(color='blue'),
             ))
-            
-            # Luna din anul trecut (ajustată)
-            previous_adjusted = previous_month_data.copy()
-            previous_adjusted['Data_Adjusted'] = previous_adjusted['Data'].apply(
-                lambda x: x.replace(year=current_year)
-            )
-            
-            fig.add_trace(go.Scatter(
-                x=previous_adjusted['Data_Adjusted'],
-                y=previous_adjusted['Valoare'],
-                mode='lines+markers',
-                name=f'{calendar.month_name[current_month]} {previous_year}',
-                line=dict(color='#ff7f0e', width=3, dash='dash'),
-                marker=dict(size=6),
-                opacity=0.8
-            ))
-            
-            title = f'📈 Comparație: {calendar.month_name[current_month]} {current_year} vs {calendar.month_name[current_month]} {previous_year}'
-            
-        else:
-            # Grafic normal fără comparație
-            fig = px.line(
-                filtered_data, 
-                x='Data', 
-                y='Valoare',
-                title=f'📈 Evoluția Vânzărilor - {selected_period}',
-                markers=True
-            )
-            fig.update_traces(line=dict(width=2), marker=dict(size=4))
-        
-        # Layout grafic
+
+        # Range Selector
         fig.update_layout(
-            height=600,
-            xaxis_title="Data",
-            yaxis_title="Valoare Vânzări (RON)",
-            hovermode='x unified',
-            legend=dict(
-                orientation="h",
-                yanchor="bottom",
-                y=1.02,
-                xanchor="right",
-                x=1
-            )
-        )
-        
-        # Range selector doar pentru graficele care nu sunt "Doar comparația lunară"
-        if selected_period != "Doar comparația lunară":
-            fig.update_xaxes(
-                rangeslider_visible=True,
+            title="📈 Vânzări Zilnice",
+            xaxis=dict(
                 rangeselector=dict(
                     buttons=list([
                         dict(count=1, label="1 Lună", step="month", stepmode="backward"),
@@ -478,72 +374,26 @@ with tab2:
                         dict(count=1, label="YTD", step="year", stepmode="todate"),
                         dict(step="all", label="Toate")
                     ])
-                )
-            )
-        
-        # Afișare grafic
+                ),
+                rangeslider=dict(visible=True),
+                type="date"
+            ),
+            yaxis_title="Valoare Vânzări (RON)",
+            hovermode="x unified",
+            height=600
+        )
+
         st.plotly_chart(fig, use_container_width=True)
-        
-        # STATISTICI
-        st.markdown("---")
-        st.subheader("📈 Statistici")
-        
-        if show_monthly_comparison and len(previous_month_data) > 0:
-            # Statistici cu comparație
-            col1, col2, col3, col4 = st.columns(4)
-            
-            current_total = current_month_data['Valoare'].sum() if len(current_month_data) > 0 else 0
-            previous_total = previous_month_data['Valoare'].sum()
-            
-            with col1:
-                st.metric(
-                    f"💰 Total {calendar.month_name[current_month]} {current_year}", 
-                    f"{current_total:,.0f} RON",
-                    delta=f"{current_total - previous_total:,.0f} RON" if current_total > 0 else None
-                )
-            
-            with col2:
-                if len(current_month_data) > 0:
-                    current_avg = current_month_data['Valoare'].mean()
-                    previous_avg = previous_month_data['Valoare'].mean()
-                    st.metric(
-                        "📊 Media zilnică", 
-                        f"{current_avg:,.0f} RON",
-                        delta=f"{current_avg - previous_avg:,.0f} RON"
-                    )
-                else:
-                    st.metric("📊 Media zilnică", "0 RON")
-            
-            with col3:
-                if len(current_month_data) > 0:
-                    best_day_current = current_month_data.loc[current_month_data['Valoare'].idxmax()]
-                    st.metric("🏆 Cea mai bună zi (luna curentă)", f"{best_day_current['Valoare']:,.0f} RON")
-                else:
-                    st.metric("🏆 Cea mai bună zi", "0 RON")
-            
-            with col4:
-                best_day_previous = previous_month_data.loc[previous_month_data['Valoare'].idxmax()]
-                st.metric("🏆 Cea mai bună zi (anul trecut)", f"{best_day_previous['Valoare']:,.0f} RON")
-                
-        else:
-            # Statistici normale
-            col1, col2, col3 = st.columns(3)
-            
-            with col1:
-                total = filtered_data['Valoare'].sum()
-                st.metric("💰 Total", f"{total:,.0f} RON")
-            
-            with col2:
-                avg = filtered_data['Valoare'].mean()
-                st.metric("📊 Media zilnică", f"{avg:,.0f} RON")
-            
-            with col3:
-                if len(filtered_data) > 0:
-                    best_day = filtered_data.loc[filtered_data['Valoare'].idxmax()]
-                    st.metric("🏆 Cea mai bună zi", f"{best_day['Valoare']:,.0f} RON")
-                else:
-                    st.metric("🏆 Cea mai bună zi", "0 RON")
-    
-    else:
-        st.error("❌ Fișierul YTD.xlsx nu există sau nu conține coloanele Data și Valoare")
-        st.info("💡 Verifică că fișierul se află în folderul data/ și conține coloanele corecte")
+
+        # Statistici (pe întreg setul de date, nu doar luna curentă)
+        total = df['Valoare'].sum()
+        medie = df['Valoare'].mean()
+        best_row = df[df['Valoare'] == df['Valoare'].max()].iloc[0]
+
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("💰 Total Vânzări", f"{total:,.0f} RON")
+        with col2:
+            st.metric("📉 Media Zilnică", f"{medie:,.0f} RON")
+        with col3:
+            st.metric("🏆 Cea mai bună zi", f"{best_row['Valoare']:,.0f} RON", best_row['Data'].strftime('%d %b %Y'))
