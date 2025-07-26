@@ -294,7 +294,7 @@ with tab2:
     def load_ytd_data():
         """Încarcă datele YTD din Excel"""
         try:
-            df = pd.read_excel("data/ytd.xlsx")
+            df = pd.read_excel("data/YTD.xlsx")
             if 'Data' in df.columns:
                 df['Data'] = pd.to_datetime(df['Data'])
             return df
