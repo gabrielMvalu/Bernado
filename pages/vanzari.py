@@ -300,233 +300,120 @@ with tab2:
             return df
         except Exception as e:
             st.error(f"Nu s-au putut încărca datele YTD: {e}")
-            # Date demo pentru YTD - extindem pentru a include și anul trecut
-            dates_current = pd.date_range(start='2024-06-01', end='2024-07-26', freq='D')
-            dates_previous = pd.date_range(start='2023-06-01', end='2023-07-26', freq='D')
+            # Date demo pentru YTD
+            dates_2024 = pd.date_range(start='2024-06-01', end='2024-12-31', freq='D')
+            dates_2025 = pd.date_range(start='2025-01-01', end='2025-07-26', freq='D')
             
             demo_data = []
-            # Date pentru 2024
-            for i, date in enumerate(dates_current):
-                demo_data.append({'Data': date, 'Valoare': 1000 + i*50})
-            # Date pentru 2023
-            for i, date in enumerate(dates_previous):
-                demo_data.append({'Data': date, 'Valoare': 800 + i*40})  # Valori ușor mai mici pentru 2023
+            for i, date in enumerate(dates_2024):
+                demo_data.append({'Data': date, 'Valoare': 800 + i*30})
+            for i, date in enumerate(dates_2025):
+                demo_data.append({'Data': date, 'Valoare': 1000 + i*40})
                 
             return pd.DataFrame(demo_data)
     
     ytd_df = load_ytd_data()
     
     if not ytd_df.empty and 'Data' in ytd_df.columns and 'Valoare' in ytd_df.columns:
-        # Grupare vânzări pe zi și sumare
+        # Grupare vânzări pe zi
         daily_sales_ytd = ytd_df.groupby(ytd_df['Data'].dt.date)['Valoare'].sum().reset_index()
         daily_sales_ytd.columns = ['Data', 'Valoare']
         daily_sales_ytd['Data'] = pd.to_datetime(daily_sales_ytd['Data'])
         
-        if not daily_sales_ytd.empty:
-            # Separăm datele pe ani pentru comparație
-            current_year = datetime.now().year  # 2025
-            current_month = datetime.now().month
+        # Verificăm anii disponibili
+        available_years = sorted(daily_sales_ytd['Data'].dt.year.unique())
+        has_multiple_years = len(available_years) >= 2
+        
+        # CHECKBOX pentru comparația cu anul trecut
+        if has_multiple_years:
+            show_comparison = st.checkbox("📊 Compară cu aceeași perioadă din anul trecut", value=False)
+        else:
+            show_comparison = False
+            st.info("Comparația va fi disponibilă când vor exista date din cel puțin 2 ani")
+        
+        if show_comparison and has_multiple_years:
+            # GRAFIC CU COMPARAȚIE
+            current_year = max(available_years)
+            previous_year = max([year for year in available_years if year < current_year])
             
-            # Verificăm ce ani avem disponibili în date
-            available_years = sorted(daily_sales_ytd['Data'].dt.year.unique())
+            current_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == current_year]
+            previous_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == previous_year]
             
-            # Logica de comparație adaptată la datele disponibile
-            if len(available_years) >= 2:
-                # Avem cel puțin 2 ani de date pentru comparație
-                latest_year = max(available_years)
-                previous_year = max([year for year in available_years if year < latest_year])
-                
-                # Datele pentru cel mai recent an
-                current_year_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == latest_year]
-                
-                # Datele pentru anul anterior disponibil
-                previous_year_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == previous_year]
-                
-                # Widget pentru selectarea tipului de grafic
-                comparison_label = f"📊 Afișează comparația {latest_year} vs {previous_year} (pentru luna curentă)"
-                show_comparison = st.checkbox(comparison_label, value=False)
-                
-                if show_comparison:
-                    # Filtrăm pentru luna curentă
-                    current_month_data = current_year_data[
-                        current_year_data['Data'].dt.month == current_month
-                    ]
-                    previous_month_data = previous_year_data[
-                        previous_year_data['Data'].dt.month == current_month
-                    ]
-                    
-                    # Verificăm dacă avem date pentru ambele perioade
-                    if current_month_data.empty and previous_month_data.empty:
-                        st.warning(f"Nu există date pentru luna {current_month} în niciunul din anii {latest_year} sau {previous_year}")
-                        show_comparison = False
-                    elif current_month_data.empty:
-                        st.warning(f"Nu există date pentru luna {current_month}/{latest_year}")
-                        show_comparison = False
-                    elif previous_month_data.empty:
-                        st.warning(f"Nu există date pentru luna {current_month}/{previous_year}")
-                        show_comparison = False
-                
-                if show_comparison and not current_month_data.empty and not previous_month_data.empty:
-                    # Pentru afișarea comparativă, ajustăm datele anului anterior
-                    previous_month_adjusted = previous_month_data.copy()
-                    # Ajustăm anul pentru comparație vizuală side-by-side
-                    previous_month_adjusted['Data_Adjusted'] = previous_month_adjusted['Data'].apply(
-                        lambda x: x.replace(year=latest_year)
-                    )
-                    
-                    # Creăm graficul cu comparație
-                    fig = px.line(title=f'📈 Comparație Vânzări - {current_month}/{latest_year} vs {current_month}/{previous_year}')
-                    
-                    # Adăugăm linia pentru anul curent
-                    fig.add_scatter(
-                        x=current_month_data['Data'],
-                        y=current_month_data['Valoare'],
-                        mode='lines+markers',
-                        name=f'{latest_year} (Anul Curent)',
-                        line=dict(color='#1f77b4', width=3),
-                        marker=dict(size=6)
-                    )
-                    
-                    # Adăugăm linia pentru anul anterior (cu styling diferit)
-                    fig.add_scatter(
-                        x=previous_month_adjusted['Data_Adjusted'],
-                        y=previous_month_adjusted['Valoare'],
-                        mode='lines+markers',
-                        name=f'{previous_year} (Anul Anterior)',
-                        line=dict(color='#ff7f0e', width=2, dash='dash'),
-                        marker=dict(size=4),
-                        opacity=0.7
-                    )
-                    
-                    # Configurare layout pentru comparație
-                    fig.update_layout(
-                        height=600,
-                        xaxis_title="Data",
-                        yaxis_title="Valoare Vânzări (RON)",
-                        hovermode='x unified',
-                        legend=dict(
-                            yanchor="top",
-                            y=0.99,
-                            xanchor="left",
-                            x=0.01
-                        )
-                    )
-                    
-                    # Formatare hover pentru comparație
-                    fig.update_traces(
-                        hovertemplate='<b>%{fullData.name}</b><br>%{x}<br>Valoare: %{y:,.0f} RON<extra></extra>'
-                    )
-                    
-                else:
-                    show_comparison = False
-            else:
-                # Nu avem suficiente date pentru comparație
-                current_year_data = daily_sales_ytd
-                show_comparison = False
-                st.info("ℹ️ Comparația year-over-year nu este disponibilă (necesită date din cel puțin 2 ani)")
+            # Ajustăm datele anului trecut pentru suprapunere vizuală
+            previous_adjusted = previous_data.copy()
+            previous_adjusted['Data_Adjusted'] = previous_adjusted['Data'].apply(
+                lambda x: x.replace(year=current_year)
+            )
             
-            if not show_comparison:
-                # Graficul standard cu range slider și selectori
-                fig = px.line(
-                    daily_sales_ytd, 
-                    x='Data', 
-                    y='Valoare',
-                    title='📈 Evoluția Vânzărilor Totale - Serie Temporală cu Selectori',
-                    markers=True
-                )
-                
-                # Configurare range slider și selectori
-                fig.update_xaxes(
-                    rangeslider_visible=True,
-                    rangeselector=dict(
-                        buttons=list([
-                            dict(count=1, label="1 Lună", step="month", stepmode="backward"),
-                            dict(count=3, label="3 Luni", step="month", stepmode="backward"),
-                            dict(count=1, label="YTD", step="year", stepmode="todate"),
-                            dict(step="all", label="Toate")
-                        ])
-                    )
-                )
-                
-                # Styling pentru grafic standard
-                fig.update_layout(
-                    height=600,
-                    showlegend=False,
-                    xaxis_title="Data",
-                    yaxis_title="Valoare Vânzări (RON)",
-                    hovermode='x unified'
-                )
-                
-                # Formatare hover standard
-                fig.update_traces(
-                    hovertemplate='<b>%{x}</b><br>Valoare: %{y:,.0f} RON<extra></extra>'
-                )
+            # Creăm graficul cu ambele serii
+            fig = px.line(title=f'📈 Vânzări: {current_year} vs {previous_year}')
             
-            # Afișare grafic
-            st.plotly_chart(fig, use_container_width=True)
+            # Linia pentru anul curent (continuă, albastră)
+            fig.add_scatter(
+                x=current_data['Data'],
+                y=current_data['Valoare'],
+                mode='lines+markers',
+                name=f'{current_year}',
+                line=dict(color='#1f77b4', width=3),
+                marker=dict(size=5)
+            )
             
-            # Statistici rapide pentru perioada afișată
-            if show_comparison and len(available_years) >= 2:
-                # Statistici comparative
-                latest_year = max(available_years)
-                previous_year = max([year for year in available_years if year < latest_year])
-                
-                current_month_data = daily_sales_ytd[
-                    (daily_sales_ytd['Data'].dt.year == latest_year) & 
-                    (daily_sales_ytd['Data'].dt.month == current_month)
-                ]
-                previous_month_data = daily_sales_ytd[
-                    (daily_sales_ytd['Data'].dt.year == previous_year) & 
-                    (daily_sales_ytd['Data'].dt.month == current_month)
-                ]
-                
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    current_total = current_month_data['Valoare'].sum() if not current_month_data.empty else 0
-                    previous_total = previous_month_data['Valoare'].sum() if not previous_month_data.empty else 0
-                    difference = current_total - previous_total
-                    st.metric(
-                        f"📊 Total {latest_year}", 
-                        f"{current_total:,.0f} RON",
-                        delta=f"{difference:,.0f} RON vs {previous_year}"
-                    )
-                
-                with col2:
-                    st.metric(f"📈 Total {previous_year}", f"{previous_total:,.0f} RON")
-                
-                with col3:
-                    if previous_total > 0:
-                        growth_rate = ((current_total - previous_total) / previous_total) * 100
-                        st.metric("📈 Creștere YoY", f"{growth_rate:+.1f}%")
-                    else:
-                        st.metric("📈 Creștere YoY", "N/A")
-            else:
-                # Statistici standard
-                col1, col2, col3 = st.columns(3)
-                
-                with col1:
-                    total_ytd = daily_sales_ytd['Valoare'].sum()
-                    st.metric("📊 Total Perioada", f"{total_ytd:,.0f} RON")
-                
-                with col2:
-                    avg_daily = daily_sales_ytd['Valoare'].mean()
-                    st.metric("📈 Media Zilnică", f"{avg_daily:,.0f} RON")
-                
-                with col3:
-                    if not daily_sales_ytd.empty:
-                        max_day = daily_sales_ytd.loc[daily_sales_ytd['Valoare'].idxmax()]
-                        st.metric("🏆 Cea Mai Bună Zi", f"{max_day['Valoare']:,.0f} RON")
-            
-            # Informații despre perioada datelor
-            min_date = daily_sales_ytd['Data'].min().strftime('%d/%m/%Y')
-            max_date = daily_sales_ytd['Data'].max().strftime('%d/%m/%Y')
-            total_days = len(daily_sales_ytd)
-            years_available = ", ".join(map(str, available_years))
-            
-            st.info(f"📅 **Perioada datelor:** {min_date} - {max_date} ({total_days} zile) | **Ani disponibili:** {years_available}")
+            # Linia pentru anul trecut (punctată, portocalie, translucidă)
+            fig.add_scatter(
+                x=previous_adjusted['Data_Adjusted'],
+                y=previous_adjusted['Valoare'],
+                mode='lines+markers',
+                name=f'{previous_year}',
+                line=dict(color='#ff7f0e', width=2, dash='dash'),
+                marker=dict(size=3),
+                opacity=0.7
+            )
             
         else:
-            st.warning("Nu există date pentru a genera graficul temporal")
+            # GRAFIC NORMAL (fără comparație)
+            fig = px.line(
+                daily_sales_ytd, 
+                x='Data', 
+                y='Valoare',
+                title='📈 Evoluția Vânzărilor',
+                markers=True
+            )
+        
+        # SELECTORI TEMPORALI (pentru ambele tipuri de grafic)
+        fig.update_xaxes(
+            rangeslider_visible=True,
+            rangeselector=dict(
+                buttons=list([
+                    dict(count=1, label="1 Lună", step="month", stepmode="backward"),
+                    dict(count=3, label="3 Luni", step="month", stepmode="backward"),
+                    dict(count=1, label="YTD", step="year", stepmode="todate"),
+                    dict(step="all", label="Toate")
+                ])
+            )
+        )
+        
+        # Layout final
+        fig.update_layout(
+            height=600,
+            xaxis_title="Data",
+            yaxis_title="Valoare Vânzări (RON)",
+            hovermode='x unified'
+        )
+        
+        # Afișare grafic
+        st.plotly_chart(fig, use_container_width=True)
+        
+        # Statistici simple
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            total = daily_sales_ytd['Valoare'].sum()
+            st.metric("📊 Total", f"{total:,.0f} RON")
+        with col2:
+            avg = daily_sales_ytd['Valoare'].mean()
+            st.metric("📈 Media", f"{avg:,.0f} RON")
+        with col3:
+            best_day = daily_sales_ytd.loc[daily_sales_ytd['Valoare'].idxmax()]
+            st.metric("🏆 Cea mai bună zi", f"{best_day['Valoare']:,.0f} RON")
+    
     else:
-        st.error("Datele YTD nu conțin coloanele necesare (Data, Valoare) sau fișierul nu există")
+        st.error("Fișierul YTD.xlsx nu există sau nu conține coloanele Data și Valoare")
