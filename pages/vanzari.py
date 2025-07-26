@@ -439,7 +439,7 @@ with tab2:
         # Layout grafic
         fig.update_layout(
             title=title,
-            height=600,
+            height=400,
             xaxis_title="Data",
             yaxis_title="Valoare Vânzări (RON)",
             hovermode='x unified',
