@@ -171,7 +171,17 @@ with tab1:
             filtered_df = filtered_df.sort_values('Data', ascending=False)
         
         # Afișare DataFrame complet
-        st.dataframe(filtered_df, use_container_width=True, height=400)
+        st.dataframe(
+            filtered_df, 
+            use_container_width=True, 
+            height=400,
+            column_config={
+                "Data": st.column_config.DatetimeColumn(
+                    "Data",
+                    format="DD/MM/YYYY"
+                )
+            }
+        )
         
         # Afișez întotdeauna statisticile când sunt aplicate filtre
         st.markdown("#### 📊 Statistici Date Filtrate")
