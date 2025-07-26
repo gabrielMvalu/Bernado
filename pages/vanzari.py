@@ -289,265 +289,244 @@ with tab1:
 with tab2:
     st.subheader("📊 Analize Avansate")
     
-    if vanzari_df.empty:
-        st.warning("Nu sunt date disponibile pentru analize")
-    else:
-        # ===== SECȚIUNEA 1: PERFORMANȚA MAGAZINELOR =====
-        st.markdown("### 🏪 Performanța Magazinelor")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 1. Pie Chart - Distribuția vânzărilor pe gestiuni
-            if 'DenumireGestiune' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-                gestiuni_valoare = vanzari_df.groupby('DenumireGestiune')['Valoare'].sum().reset_index()
+    # Încărcare date YTD
+    @st.cache_data
+    def load_ytd_data():
+        """Încarcă datele YTD din Excel"""
+        try:
+            df = pd.read_excel("data/ytd.xlsx")
+            if 'Data' in df.columns:
+                df['Data'] = pd.to_datetime(df['Data'])
+            return df
+        except Exception as e:
+            st.error(f"Nu s-au putut încărca datele YTD: {e}")
+            # Date demo pentru YTD - extindem pentru a include și anul trecut
+            dates_current = pd.date_range(start='2024-06-01', end='2024-07-26', freq='D')
+            dates_previous = pd.date_range(start='2023-06-01', end='2023-07-26', freq='D')
+            
+            demo_data = []
+            # Date pentru 2024
+            for i, date in enumerate(dates_current):
+                demo_data.append({'Data': date, 'Valoare': 1000 + i*50})
+            # Date pentru 2023
+            for i, date in enumerate(dates_previous):
+                demo_data.append({'Data': date, 'Valoare': 800 + i*40})  # Valori ușor mai mici pentru 2023
                 
-                fig = px.pie(
-                    gestiuni_valoare,
-                    values='Valoare',
-                    names='DenumireGestiune',
-                    title="Distribuția Vânzărilor pe Gestiuni"
-                )
-                fig.update_traces(textposition='inside', textinfo='percent+label')
-                st.plotly_chart(fig, use_container_width=True)
+            return pd.DataFrame(demo_data)
+    
+    ytd_df = load_ytd_data()
+    
+    if not ytd_df.empty and 'Data' in ytd_df.columns and 'Valoare' in ytd_df.columns:
+        # Grupare vânzări pe zi și sumare
+        daily_sales_ytd = ytd_df.groupby(ytd_df['Data'].dt.date)['Valoare'].sum().reset_index()
+        daily_sales_ytd.columns = ['Data', 'Valoare']
+        daily_sales_ytd['Data'] = pd.to_datetime(daily_sales_ytd['Data'])
         
-        with col2:
-            # 2. Bar Chart - Comparație gestiuni pe lună
-            if all(col in vanzari_df.columns for col in ['DenumireGestiune', 'Data', 'Valoare']):
-                vanzari_df_copy = vanzari_df.copy()
-                vanzari_df_copy['Luna'] = vanzari_df_copy['Data'].dt.strftime('%Y-%m')
-                gestiuni_luna = vanzari_df_copy.groupby(['DenumireGestiune', 'Luna'])['Valoare'].sum().reset_index()
+        if not daily_sales_ytd.empty:
+            # Separăm datele pe ani pentru comparație
+            current_year = datetime.now().year  # 2025
+            current_month = datetime.now().month
+            
+            # Verificăm ce ani avem disponibili în date
+            available_years = sorted(daily_sales_ytd['Data'].dt.year.unique())
+            
+            # Logica de comparație adaptată la datele disponibile
+            if len(available_years) >= 2:
+                # Avem cel puțin 2 ani de date pentru comparație
+                latest_year = max(available_years)
+                previous_year = max([year for year in available_years if year < latest_year])
                 
-                fig = px.bar(
-                    gestiuni_luna,
-                    x='Luna',
+                # Datele pentru cel mai recent an
+                current_year_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == latest_year]
+                
+                # Datele pentru anul anterior disponibil
+                previous_year_data = daily_sales_ytd[daily_sales_ytd['Data'].dt.year == previous_year]
+                
+                # Widget pentru selectarea tipului de grafic
+                comparison_label = f"📊 Afișează comparația {latest_year} vs {previous_year} (pentru luna curentă)"
+                show_comparison = st.checkbox(comparison_label, value=False)
+                
+                if show_comparison:
+                    # Filtrăm pentru luna curentă
+                    current_month_data = current_year_data[
+                        current_year_data['Data'].dt.month == current_month
+                    ]
+                    previous_month_data = previous_year_data[
+                        previous_year_data['Data'].dt.month == current_month
+                    ]
+                    
+                    # Verificăm dacă avem date pentru ambele perioade
+                    if current_month_data.empty and previous_month_data.empty:
+                        st.warning(f"Nu există date pentru luna {current_month} în niciunul din anii {latest_year} sau {previous_year}")
+                        show_comparison = False
+                    elif current_month_data.empty:
+                        st.warning(f"Nu există date pentru luna {current_month}/{latest_year}")
+                        show_comparison = False
+                    elif previous_month_data.empty:
+                        st.warning(f"Nu există date pentru luna {current_month}/{previous_year}")
+                        show_comparison = False
+                
+                if show_comparison and not current_month_data.empty and not previous_month_data.empty:
+                    # Pentru afișarea comparativă, ajustăm datele anului anterior
+                    previous_month_adjusted = previous_month_data.copy()
+                    # Ajustăm anul pentru comparație vizuală side-by-side
+                    previous_month_adjusted['Data_Adjusted'] = previous_month_adjusted['Data'].apply(
+                        lambda x: x.replace(year=latest_year)
+                    )
+                    
+                    # Creăm graficul cu comparație
+                    fig = px.line(title=f'📈 Comparație Vânzări - {current_month}/{latest_year} vs {current_month}/{previous_year}')
+                    
+                    # Adăugăm linia pentru anul curent
+                    fig.add_scatter(
+                        x=current_month_data['Data'],
+                        y=current_month_data['Valoare'],
+                        mode='lines+markers',
+                        name=f'{latest_year} (Anul Curent)',
+                        line=dict(color='#1f77b4', width=3),
+                        marker=dict(size=6)
+                    )
+                    
+                    # Adăugăm linia pentru anul anterior (cu styling diferit)
+                    fig.add_scatter(
+                        x=previous_month_adjusted['Data_Adjusted'],
+                        y=previous_month_adjusted['Valoare'],
+                        mode='lines+markers',
+                        name=f'{previous_year} (Anul Anterior)',
+                        line=dict(color='#ff7f0e', width=2, dash='dash'),
+                        marker=dict(size=4),
+                        opacity=0.7
+                    )
+                    
+                    # Configurare layout pentru comparație
+                    fig.update_layout(
+                        height=600,
+                        xaxis_title="Data",
+                        yaxis_title="Valoare Vânzări (RON)",
+                        hovermode='x unified',
+                        legend=dict(
+                            yanchor="top",
+                            y=0.99,
+                            xanchor="left",
+                            x=0.01
+                        )
+                    )
+                    
+                    # Formatare hover pentru comparație
+                    fig.update_traces(
+                        hovertemplate='<b>%{fullData.name}</b><br>%{x}<br>Valoare: %{y:,.0f} RON<extra></extra>'
+                    )
+                    
+                else:
+                    show_comparison = False
+            else:
+                # Nu avem suficiente date pentru comparație
+                current_year_data = daily_sales_ytd
+                show_comparison = False
+                st.info("ℹ️ Comparația year-over-year nu este disponibilă (necesită date din cel puțin 2 ani)")
+            
+            if not show_comparison:
+                # Graficul standard cu range slider și selectori
+                fig = px.line(
+                    daily_sales_ytd, 
+                    x='Data', 
                     y='Valoare',
-                    color='DenumireGestiune',
-                    title="Comparație Gestiuni pe Lună",
-                    barmode='group'
+                    title='📈 Evoluția Vânzărilor Totale - Serie Temporală cu Selectori',
+                    markers=True
                 )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # ===== SECȚIUNEA 2: ANALIZA PRODUSELOR =====
-        st.markdown("### 🏷️ Analiza Produselor")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 3. Treemap - Grupe de produse
-            if 'Denumire grupa' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-                grupe_valoare = vanzari_df.groupby('Denumire grupa')['Valoare'].sum().reset_index()
-                grupe_valoare = grupe_valoare.sort_values('Valoare', ascending=False)
                 
-                fig = px.treemap(
-                    grupe_valoare,
-                    values='Valoare',
-                    names='Denumire grupa',
-                    title="Distribuția Vânzărilor pe Grupe de Produse"
+                # Configurare range slider și selectori
+                fig.update_xaxes(
+                    rangeslider_visible=True,
+                    rangeselector=dict(
+                        buttons=list([
+                            dict(count=1, label="1 Lună", step="month", stepmode="backward"),
+                            dict(count=3, label="3 Luni", step="month", stepmode="backward"),
+                            dict(count=1, label="YTD", step="year", stepmode="todate"),
+                            dict(step="all", label="Toate")
+                        ])
+                    )
                 )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # 4. Top 20 Produse
-            if 'Denumire' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-                top_produse = vanzari_df.groupby('Denumire')['Valoare'].sum().nlargest(20).reset_index()
                 
-                fig = px.bar(
-                    top_produse,
-                    x='Valoare',
-                    y='Denumire',
-                    orientation='h',
-                    title="Top 20 Produse după Vânzări"
+                # Styling pentru grafic standard
+                fig.update_layout(
+                    height=600,
+                    showlegend=False,
+                    xaxis_title="Data",
+                    yaxis_title="Valoare Vânzări (RON)",
+                    hovermode='x unified'
                 )
-                fig.update_layout(height=600)
-                st.plotly_chart(fig, use_container_width=True)
-        
-        # 5. Scatter Plot - Preț vs Cantitate
-        if all(col in vanzari_df.columns for col in ['Pret', 'Cantitate', 'Valoare']):
-            # Creez o copie pentru a gestiona valorile negative
-            scatter_df = vanzari_df.copy()
-            # Adaug o coloană pentru a identifica retururile
-            scatter_df['Tip_Tranzactie'] = scatter_df['Cantitate'].apply(lambda x: 'Retur' if x < 0 else 'Vânzare')
-            # Folosesc valoarea absolută pentru size (plotly nu acceptă negative)
-            scatter_df['Size_Abs'] = abs(scatter_df['Cantitate'])
+                
+                # Formatare hover standard
+                fig.update_traces(
+                    hovertemplate='<b>%{x}</b><br>Valoare: %{y:,.0f} RON<extra></extra>'
+                )
             
-            fig = px.scatter(
-                scatter_df,
-                x='Pret',
-                y='Cantitate',
-                size='Size_Abs',
-                color='Tip_Tranzactie',
-                title="Corelația Preț vs Cantitate (Vânzări vs Retururi)",
-                hover_data=['Denumire'] if 'Denumire' in scatter_df.columns else None,
-                color_discrete_map={'Vânzare': 'blue', 'Retur': 'red'}
-            )
+            # Afișare grafic
             st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # ===== SECȚIUNEA 3: PROFITABILITATE =====
-        st.markdown("### 💰 Analiza Profitabilității")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 6. Bubble Chart - Marja de profit
-            if all(col in vanzari_df.columns for col in ['Valoare', 'Adaos', 'Cantitate']):
-                # Creez o copie pentru a gestiona valorile negative
-                profit_df = vanzari_df.copy()
-                # Identific tipul de tranzacție
-                profit_df['Tip_Tranzactie'] = profit_df['Cantitate'].apply(lambda x: 'Retur' if x < 0 else 'Vânzare')
-                # Folosesc valoarea absolută pentru size
-                profit_df['Size_Abs'] = abs(profit_df['Cantitate'])
-                
-                fig = px.scatter(
-                    profit_df,
-                    x='Valoare',
-                    y='Adaos',
-                    size='Size_Abs',
-                    color='Tip_Tranzactie',
-                    title="Marja de Profit (Valoare vs Adaos) - Vânzări vs Retururi",
-                    hover_data=['Denumire'] if 'Denumire' in profit_df.columns else None,
-                    color_discrete_map={'Vânzare': 'green', 'Retur': 'red'}
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # 7. Heatmap - Profitabilitate pe gestiune și grupă
-            if all(col in vanzari_df.columns for col in ['DenumireGestiune', 'Denumire grupa', 'Adaos']):
-                heatmap_data = vanzari_df.groupby(['DenumireGestiune', 'Denumire grupa'])['Adaos'].sum().reset_index()
-                heatmap_pivot = heatmap_data.pivot(index='DenumireGestiune', columns='Denumire grupa', values='Adaos').fillna(0)
-                
-                fig = px.imshow(
-                    heatmap_pivot,
-                    title="Heatmap Profitabilitate (Gestiune vs Grupă)",
-                    aspect='auto',
-                    color_continuous_scale='RdYlBu_r'
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # ===== SECȚIUNEA 4: AGENȚI ȘI CLIENȚI =====
-        st.markdown("### 👥 Performanța Agenților și Clienților")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            # 8. Performanța agenților
-            if 'Agent' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-                agenti_valoare = vanzari_df.groupby('Agent')['Valoare'].sum().nlargest(10).reset_index()
-                
-                fig = px.bar(
-                    agenti_valoare,
-                    x='Valoare',
-                    y='Agent',
-                    orientation='h',
-                    title="Top 10 Agenți după Performanță"
-                )
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            # 9. Top 15 Clienți
-            if 'Client' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-                top_clienti = vanzari_df.groupby('Client')['Valoare'].sum().nlargest(15).reset_index()
-                
-                fig = px.bar(
-                    top_clienti,
-                    x='Valoare',
-                    y='Client',
-                    orientation='h',
-                    title="Top 15 Clienți după Valoare"
-                )
-                fig.update_layout(height=500)
-                st.plotly_chart(fig, use_container_width=True)
-        
-        st.markdown("---")
-        
-        # ===== SECȚIUNEA 6: ANALIZA RETURURILOR =====
-        st.markdown("### 🔄 Analiza Retururilor")
-        
-        # Filtrez doar retururile (cantități negative)
-        if 'Cantitate' in vanzari_df.columns:
-            retururi_df = vanzari_df[vanzari_df['Cantitate'] < 0].copy()
             
-            if not retururi_df.empty:
-                col1, col2 = st.columns(2)
+            # Statistici rapide pentru perioada afișată
+            if show_comparison and len(available_years) >= 2:
+                # Statistici comparative
+                latest_year = max(available_years)
+                previous_year = max([year for year in available_years if year < latest_year])
+                
+                current_month_data = daily_sales_ytd[
+                    (daily_sales_ytd['Data'].dt.year == latest_year) & 
+                    (daily_sales_ytd['Data'].dt.month == current_month)
+                ]
+                previous_month_data = daily_sales_ytd[
+                    (daily_sales_ytd['Data'].dt.year == previous_year) & 
+                    (daily_sales_ytd['Data'].dt.month == current_month)
+                ]
+                
+                col1, col2, col3 = st.columns(3)
                 
                 with col1:
-                    # Metrici retururi
-                    total_retururi_valoare = retururi_df['Valoare'].sum() if 'Valoare' in retururi_df.columns else 0
-                    nr_retururi = len(retururi_df)
-                    
-                    st.metric("Valoare Totală Retururi", f"{abs(total_retururi_valoare):,.0f} RON")
-                    st.metric("Număr Retururi", f"{nr_retururi:,}")
-                    
-                    # Top produse returnate
-                    if 'Denumire' in retururi_df.columns:
-                        top_retururi = retururi_df.groupby('Denumire')['Cantitate'].sum().nsmallest(10).reset_index()
-                        top_retururi['Cantitate'] = abs(top_retururi['Cantitate'])  # Fac pozitiv pentru afișare
-                        
-                        fig = px.bar(
-                            top_retururi,
-                            x='Cantitate',
-                            y='Denumire',
-                            orientation='h',
-                            title="Top 10 Produse Returnate",
-                            color_discrete_sequence=['red']
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
+                    current_total = current_month_data['Valoare'].sum() if not current_month_data.empty else 0
+                    previous_total = previous_month_data['Valoare'].sum() if not previous_month_data.empty else 0
+                    difference = current_total - previous_total
+                    st.metric(
+                        f"📊 Total {latest_year}", 
+                        f"{current_total:,.0f} RON",
+                        delta=f"{difference:,.0f} RON vs {previous_year}"
+                    )
                 
                 with col2:
-                    # Retururi pe gestiuni
-                    if 'DenumireGestiune' in retururi_df.columns:
-                        retururi_gestiuni = retururi_df.groupby('DenumireGestiune')['Valoare'].sum().reset_index()
-                        retururi_gestiuni['Valoare'] = abs(retururi_gestiuni['Valoare'])
-                        
-                        fig = px.pie(
-                            retururi_gestiuni,
-                            values='Valoare',
-                            names='DenumireGestiune',
-                            title="Distribuția Retururilor pe Gestiuni",
-                            color_discrete_sequence=px.colors.sequential.Reds_r
-                        )
-                        st.plotly_chart(fig, use_container_width=True)
-                    
-                    # Retururi în timp
-                    if 'Data' in retururi_df.columns:
-                        retururi_df_copy = retururi_df.copy()
-                        retururi_df_copy['Data_Str'] = retururi_df_copy['Data'].dt.strftime('%Y-%m-%d')
-                        retururi_zilnic = retururi_df_copy.groupby('Data_Str')['Valoare'].sum().reset_index()
-                        retururi_zilnic['Valoare'] = abs(retururi_zilnic['Valoare'])
-                        
-                        fig = px.line(
-                            retururi_zilnic,
-                            x='Data_Str',
-                            y='Valoare',
-                            title="Evoluția Retururilor în Timp",
-                            color_discrete_sequence=['red']
-                        )
-                        fig.update_xaxes(title="Data")
-                        fig.update_yaxes(title="Valoare Retururi")
-                        st.plotly_chart(fig, use_container_width=True)
+                    st.metric(f"📈 Total {previous_year}", f"{previous_total:,.0f} RON")
+                
+                with col3:
+                    if previous_total > 0:
+                        growth_rate = ((current_total - previous_total) / previous_total) * 100
+                        st.metric("📈 Creștere YoY", f"{growth_rate:+.1f}%")
+                    else:
+                        st.metric("📈 Creștere YoY", "N/A")
             else:
-                st.info("Nu au fost găsite retururi în perioada analizată.")
-        
-        st.markdown("---")
-        
-        # ===== SECȚIUNEA 7: PRODUCĂTORI =====
-        st.markdown("### 🏭 Analiza Producătorilor")
-        
-        # 10. Market share producători
-        if 'Producator' in vanzari_df.columns and 'Valoare' in vanzari_df.columns:
-            producatori_valoare = vanzari_df.groupby('Producator')['Valoare'].sum().nlargest(10).reset_index()
+                # Statistici standard
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    total_ytd = daily_sales_ytd['Valoare'].sum()
+                    st.metric("📊 Total Perioada", f"{total_ytd:,.0f} RON")
+                
+                with col2:
+                    avg_daily = daily_sales_ytd['Valoare'].mean()
+                    st.metric("📈 Media Zilnică", f"{avg_daily:,.0f} RON")
+                
+                with col3:
+                    if not daily_sales_ytd.empty:
+                        max_day = daily_sales_ytd.loc[daily_sales_ytd['Valoare'].idxmax()]
+                        st.metric("🏆 Cea Mai Bună Zi", f"{max_day['Valoare']:,.0f} RON")
             
-            fig = px.pie(
-                producatori_valoare,
-                values='Valoare',
-                names='Producator',
-                title="Top 10 Producători - Market Share"
-            )
-            fig.update_traces(textposition='inside', textinfo='percent+label')
-            st.plotly_chart(fig, use_container_width=True)
+            # Informații despre perioada datelor
+            min_date = daily_sales_ytd['Data'].min().strftime('%d/%m/%Y')
+            max_date = daily_sales_ytd['Data'].max().strftime('%d/%m/%Y')
+            total_days = len(daily_sales_ytd)
+            years_available = ", ".join(map(str, available_years))
+            
+            st.info(f"📅 **Perioada datelor:** {min_date} - {max_date} ({total_days} zile) | **Ani disponibili:** {years_available}")
+            
+        else:
+            st.warning("Nu există date pentru a genera graficul temporal")
+    else:
+        st.error("Datele YTD nu conțin coloanele necesare (Data, Valoare) sau fișierul nu există")
