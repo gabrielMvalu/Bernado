@@ -174,8 +174,41 @@ with tab1:
             filtered_df = filtered_df[filtered_df['Denumire'].isin(produs_filter)]
 
     else:
-        # Pentru alte view-uri, folosește toate datele fără filtre
+        # Pentru "Zi și Clienți" și "Top Produse" - doar filtru dată
+        if 'Data' in vanzari_df.columns:
+            vanzari_df['Data'] = pd.to_datetime(vanzari_df['Data'])
+            min_date = vanzari_df['Data'].min().date()
+            max_date = vanzari_df['Data'].max().date()
+            today = datetime.now().date()
+            
+            if today > max_date:
+                default_date = max_date
+            elif today < min_date:
+                default_date = min_date
+            else:
+                default_date = today
+            
+            date_range = st.date_input(
+                "📅 Interval date:",
+                value=(default_date, default_date),
+                min_value=min_date,
+                max_value=max_date,
+                format="DD/MM/YYYY",
+                key=f"date_filter_{view_type}"
+            )
+        
+        # Aplicare filtru dată pentru toate view-urile
         filtered_df = vanzari_df.copy()
+        if 'Data' in vanzari_df.columns and date_range:
+            if isinstance(date_range, tuple) and len(date_range) == 2:
+                start_date, end_date = date_range
+                filtered_df = filtered_df[
+                    (filtered_df['Data'].dt.date >= start_date) & 
+                    (filtered_df['Data'].dt.date <= end_date)
+                ]
+            else:
+                selected_date_obj = date_range
+                filtered_df = filtered_df[filtered_df['Data'].dt.date == selected_date_obj]
 
     # Procesare date în funcție de tipul de view selectat
     if view_type == "Standard":
@@ -237,7 +270,7 @@ with tab1:
         
         # Afișez statisticile
         st.markdown("#### 📊 Statistici")
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2 = st.columns(2)
         
         with col1:
             total_valoare = display_df['Valoare'].sum() if 'Valoare' in display_df.columns else 0
@@ -245,17 +278,6 @@ with tab1:
         with col2:
             total_adaos = display_df['Adaos'].sum() if 'Adaos' in display_df.columns else 0
             st.metric("Total Adaos", f"{total_adaos:,.0f} RON")
-        with col3:
-            if view_type == "Top Produse" and 'Cantitate' in display_df.columns:
-                total_cantitate = display_df['Cantitate'].sum()
-                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
-            elif view_type == "Standard" and 'Cantitate' in display_df.columns:
-                total_cantitate = display_df['Cantitate'].sum()
-                st.metric("Total Cantitate", f"{total_cantitate:,.0f}")
-            else:
-                st.metric("Înregistrări", f"{len(display_df):,}")
-        with col4:
-            st.metric("Înregistrări", f"{len(display_df):,}")
 
     else:
         if view_type == "Standard":
